@@ -187,6 +187,7 @@ RLS: `auth.uid() = user_id`
 | `notify_anomalies` | bool (opt-in на L3 ультра-алерты) |
 | `notify_digest` | bool (opt-in на еженедельный дайджест) |
 | `timezone` | text default `'Europe/Moscow'` |
+| `has_schengen` | bool default false (показывать ли Tier B layover-городов) |
 
 ### 2.3 Справочники
 Список IATA-кодов аэропортов — **не в БД**, статический JSON в `/data/airports.json` (~10 КБ для 500 крупнейших). Используется в UI для типахеда формы saved-search. Регенерируется скриптом из Travelpayouts data dump.
@@ -332,7 +333,34 @@ results ← GET /v2/prices/latest
 
 ### 4.1 `long_layover`
 
-**Интересные города (config):** `IST, DXB, DOH, SIN, ICN, HKG, BKK, AUH, AMS, FRA, HEL, REK` (12 шт).
+**Интересные города (config, ~35 шт, с тирами и визовыми тегами):**
+
+Хранятся в `/data/layover-cities.ts` как массив объектов:
+```typescript
+type LayoverCity = {
+  iata: string;
+  tier: 'A' | 'B' | 'C';
+  visa_ru: 'none' | 'on_arrival' | 'schengen' | 'other';
+  weight: number;  // 1.0 … 2.0, используется в формуле score
+};
+```
+
+**Tier A — без визы или виза по прилёту (~20 шт):**
+`IST, DXB, DOH, SIN, ICN, HKG, BKK, AUH, KUL, TPE, ADD, BAH, MCT, EBL, TAS, GYD, REK, HEL, AMS, FRA`
+
+**Tier B — требуют шенгенскую визу (~10 шт):**
+`CDG, MUC, BER, ZRH, VIE, CPH, WAW, FCO, BCN, MAD, LIS, ATH`
+
+**Tier C — пограничные / виза по прибытии с нюансами (~5 шт):**
+`BOM, DEL, CMB, MNL, CAI`
+
+**UI:** на карточке стыковки рядом с городом — бейдж:
+- 🟢 без визы
+- 🟡 виза по прилёту
+- 🔴 нужна Schengen
+- ⚪ другая виза
+
+Фильтрация по визовому статусу — на основе настройки пользователя `profiles.has_schengen` (см. таблицу `profiles` в 2.2). Без галочки «у меня есть Schengen» Tier B карточки скрыты по умолчанию (можно показать кнопкой «показать всё»).
 
 **Алгоритм:**
 ```
@@ -444,7 +472,7 @@ results ← GET /v2/prices/latest
 - `/layovers` — табы по 4 типам, сортировка `score DESC`
 - `/anomalies` — только L3, подсветка `discount_pct ≥ 50`
 - `/status` — публичная страница здоровья cron-job'ов и API-бюджета
-- `/settings` — opt-in на дайджест/аномалии, выход из аккаунта
+- `/settings` — opt-in на дайджест/аномалии, чекбокс «У меня есть шенгенская виза», выход из аккаунта
 - `/admin/earnings` — только для `profiles.role = 'admin'`
 
 ---
