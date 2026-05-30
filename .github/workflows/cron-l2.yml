@@ -1,0 +1,16 @@
+name: Cron — L2 deal feed
+
+on:
+  # schedule:
+  #   - cron: "30 */6 * * *"   # 4x/day, offset 30m from L1 — uncomment in Plan 2
+  workflow_dispatch:
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke poll_l2
+        run: |
+          curl --fail-with-body -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_BEARER_TOKEN }}" \
+            "${{ secrets.SITE_URL }}/api/cron/poll_l2"

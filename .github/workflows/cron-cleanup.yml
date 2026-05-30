@@ -1,0 +1,16 @@
+name: Cron — Cleanup
+
+on:
+  # schedule:
+  #   - cron: "0 3 * * 0"   # weekly Sun 03:00 UTC — uncomment in Plan 6
+  workflow_dispatch:
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke poll_cleanup
+        run: |
+          curl --fail-with-body -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_BEARER_TOKEN }}" \
+            "${{ secrets.SITE_URL }}/api/cron/poll_cleanup"

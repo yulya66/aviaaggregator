@@ -1,0 +1,16 @@
+name: Cron — Weekly digest
+
+on:
+  # schedule:
+  #   - cron: "0 6 * * 0"   # Sun 06:00 UTC (09:00 MSK) — uncomment in Plan 6
+  workflow_dispatch:
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke poll_digest
+        run: |
+          curl --fail-with-body -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_BEARER_TOKEN }}" \
+            "${{ secrets.SITE_URL }}/api/cron/poll_digest"

@@ -1,0 +1,16 @@
+name: Cron — L1 saved searches
+
+on:
+  # schedule:
+  #   - cron: "0 */6 * * *"   # 4x/day: 00:00, 06:00, 12:00, 18:00 UTC — uncomment in Plan 3
+  workflow_dispatch:
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke poll_l1
+        run: |
+          curl --fail-with-body -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_BEARER_TOKEN }}" \
+            "${{ secrets.SITE_URL }}/api/cron/poll_l1"

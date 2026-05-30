@@ -1,0 +1,16 @@
+name: Cron — Virtual interlining
+
+on:
+  # schedule:
+  #   - cron: "15 2 * * *"   # daily 02:15 UTC — uncomment in Plan 4
+  workflow_dispatch:
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke poll_vi
+        run: |
+          curl --fail-with-body -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_BEARER_TOKEN }}" \
+            "${{ secrets.SITE_URL }}/api/cron/poll_vi"

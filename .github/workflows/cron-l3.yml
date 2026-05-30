@@ -1,0 +1,16 @@
+name: Cron — L3 anomaly engine
+
+on:
+  # schedule:
+  #   - cron: "5 * * * *"   # hourly at :05 — uncomment in Plan 2
+  workflow_dispatch:
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke poll_l3
+        run: |
+          curl --fail-with-body -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_BEARER_TOKEN }}" \
+            "${{ secrets.SITE_URL }}/api/cron/poll_l3"

@@ -1,0 +1,16 @@
+name: Cron — Open-jaw
+
+on:
+  # schedule:
+  #   - cron: "45 2 * * *"   # daily 02:45 UTC — uncomment in Plan 4
+  workflow_dispatch:
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke poll_oj
+        run: |
+          curl --fail-with-body -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_BEARER_TOKEN }}" \
+            "${{ secrets.SITE_URL }}/api/cron/poll_oj"
