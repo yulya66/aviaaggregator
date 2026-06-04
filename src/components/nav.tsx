@@ -1,4 +1,3 @@
-import type { Route } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
@@ -18,8 +17,7 @@ export async function Nav() {
           <Link href="/anomalies" className="text-gray-600 hover:text-black">
             Аномалии
           </Link>
-          {/* /status route arrives in a later plan; cast until then */}
-          <Link href={"/status" as Route} className="text-gray-600 hover:text-black">
+          <Link href="/status" className="text-gray-600 hover:text-black">
             Статус
           </Link>
           {user ? (
