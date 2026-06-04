@@ -19,14 +19,17 @@ create table public.price_snapshots (
 -- One row per (origin, destination, depart_date) per UTC day; upsert keeps the daily minimum.
 create unique index price_snapshots_daily_uniq
   on public.price_snapshots (origin_iata, destination_iata, depart_date, observed_on);
-create index price_snapshots_pair_idx
-  on public.price_snapshots (origin_iata, destination_iata, depart_date);
+-- Covers anomaly_candidates' lateral stats filter (origin + destination + depart_date + observed_at)
+-- and any (origin_iata, destination_iata, depart_date) prefix lookup.
+create index price_snapshots_stats_idx
+  on public.price_snapshots (origin_iata, destination_iata, depart_date, observed_at);
+-- Single-column observed_at index is used by the weekly cleanup cron (Plan 6) that deletes old rows.
 create index price_snapshots_observed_idx
   on public.price_snapshots (observed_at);
 
 -- ── deals: L2 feed ────────────────────────────────────────────────────────────
 create table public.deals (
-  id               uuid        primary key,
+  id               uuid        primary key, -- supplied by cron (deterministic UUIDv5); intentionally no default
   origin_iata      text        not null,
   destination_iata text        not null,
   depart_date      date        not null,
@@ -47,7 +50,7 @@ create index deals_active_recent_idx
 
 -- ── anomalies: L3 ─────────────────────────────────────────────────────────────
 create table public.anomalies (
-  id                uuid        primary key,
+  id                uuid        primary key, -- supplied by cron (deterministic UUIDv5); intentionally no default
   origin_iata       text        not null,
   destination_iata  text        not null,
   depart_date       date        not null,
@@ -76,7 +79,7 @@ create table public.cron_runs (
   finished_at   timestamptz,
   api_calls     int         not null default 0,
   rows_inserted int         not null default 0,
-  error         text
+  error         text        -- observability only; publicly readable, so cron code MUST NOT log secrets here
 );
 
 create index cron_runs_job_started_idx
@@ -97,6 +100,7 @@ create policy "cron_runs_select_all"       on public.cron_runs       for select 
 -- ── RPC: bulk upsert snapshots, keeping the daily minimum price ────────────────
 create or replace function public.record_snapshots(p_rows jsonb)
 returns void language sql security definer set search_path = public as $$
+  -- NOTE: observed_on is always server-derived (UTC today); callers must not pass it in p_rows.
   insert into public.price_snapshots
     (origin_iata, destination_iata, depart_date, return_date, price_rub, airline, transfers)
   select r.origin_iata, r.destination_iata, r.depart_date, r.return_date,
@@ -137,7 +141,7 @@ returns table (
   from latest l
   cross join lateral (
     select percentile_cont(0.5) within group (order by ps.price_rub) as median,
-           stddev_samp(ps.price_rub)                                 as stddev,
+           stddev_samp(ps.price_rub)::numeric                        as stddev,
            count(*)                                                  as n
     from public.price_snapshots ps
     where ps.origin_iata = p_origin
