@@ -1,8 +1,8 @@
 name: Cron — L3 anomaly engine
 
 on:
-  # schedule:
-  #   - cron: "5 * * * *"   # hourly at :05 — uncomment in Plan 2
+  schedule:
+    - cron: "5 * * * *"   # hourly at :05 (L3 round-robins one transit hub per hour)
   workflow_dispatch:
 
 jobs:
