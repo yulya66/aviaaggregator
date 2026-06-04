@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
+import { runPollL2 } from "@/lib/jobs/l2";
+import { runPollL3 } from "@/lib/jobs/l3";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { tpClient } from "@/lib/tp/client";
+
+export const dynamic = "force-dynamic";
 
 const KNOWN_JOBS = [
   "poll_l1",
@@ -30,7 +36,37 @@ export async function POST(request: Request, { params }: { params: Promise<{ job
     return NextResponse.json({ error: "unknown_job", job }, { status: 404 });
   }
 
-  // Each job's real implementation lands in its respective plan (L1/L2/L3/...).
+  if (job === "poll_l2" || job === "poll_l3") {
+    const supabase = createServiceRoleClient();
+    const marker = process.env.TP_PARTNER_MARKER ?? "";
+    const startedAt = new Date().toISOString();
+    try {
+      const result =
+        job === "poll_l2"
+          ? await runPollL2(supabase, tpClient, marker)
+          : await runPollL3(supabase, tpClient, marker, new Date().getUTCHours());
+
+      await supabase.from("cron_runs").insert({
+        job,
+        started_at: startedAt,
+        finished_at: new Date().toISOString(),
+        api_calls: result.api_calls,
+        rows_inserted: result.rows_inserted,
+      });
+
+      return NextResponse.json({ job, ...result }, { status: 200 });
+    } catch (error) {
+      await supabase.from("cron_runs").insert({
+        job,
+        started_at: startedAt,
+        finished_at: new Date().toISOString(),
+        error: String(error),
+      });
+      return NextResponse.json({ job, error: String(error) }, { status: 500 });
+    }
+  }
+
+  // Remaining jobs (L1, layovers, cleanup, watchdog, digest) land in later plans.
   return NextResponse.json(
     { job, status: "not_implemented", note: "Stub — implemented in later plan." },
     { status: 501 },
