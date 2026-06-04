@@ -15,6 +15,9 @@ export async function Nav() {
           Авиа-агрегатор
         </Link>
         <div className="flex items-center gap-4 text-sm">
+          <Link href="/anomalies" className="text-gray-600 hover:text-black">
+            Аномалии
+          </Link>
           {/* /status route arrives in a later plan; cast until then */}
           <Link href={"/status" as Route} className="text-gray-600 hover:text-black">
             Статус
