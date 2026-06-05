@@ -11,6 +11,10 @@ vi.mock("@/lib/jobs/l2", () => ({
   runPollL2: vi.fn().mockResolvedValue({ api_calls: 3, rows_inserted: 10 }),
 }));
 
+vi.mock("@/lib/jobs/l1", () => ({
+  runPollL1: vi.fn().mockResolvedValue({ api_calls: 2, rows_inserted: 1 }),
+}));
+
 vi.mock("@/lib/jobs/l3", () => ({
   runPollL3: vi.fn().mockResolvedValue({ api_calls: 1, rows_inserted: 200, anomalies_detected: 2 }),
 }));
@@ -61,6 +65,17 @@ describe("POST /api/cron/[job]", () => {
     const body = await res.json();
     expect(body.job).toBe("poll_l2");
     expect(body.rows_inserted).toBe(10);
+  });
+
+  it("runs poll_l1 and returns 200 with the job result", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("secret-token", "poll_l1"), {
+      params: Promise.resolve({ job: "poll_l1" }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.job).toBe("poll_l1");
+    expect(body.rows_inserted).toBe(1);
   });
 
   it("runs poll_l3 and returns 200", async () => {
