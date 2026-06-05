@@ -1,0 +1,30 @@
+# Normalize all text files to LF in the repo and on checkout (overrides core.autocrlf).
+# Keeps Biome's formatter (lineEnding: lf) green on Windows and Linux CI alike.
+* text=auto eol=lf
+
+# Explicit text types (defensive)
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.mjs  text eol=lf
+*.cjs  text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.sql  text eol=lf
+*.sh   text eol=lf
+
+# Lockfile
+pnpm-lock.yaml text eol=lf
+
+# Binary (never touch line endings)
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
