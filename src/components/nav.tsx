@@ -22,6 +22,9 @@ export async function Nav() {
           </Link>
           {user ? (
             <>
+              <Link href="/saved" className="text-gray-600 hover:text-black">
+                Мои поиски
+              </Link>
               <span className="text-gray-600">{user.email}</span>
               <form action="/auth/logout" method="post">
                 <button type="submit" className="text-gray-600 hover:text-black">
