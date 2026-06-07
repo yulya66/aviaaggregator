@@ -4,7 +4,12 @@ import { evaluateAnomaly } from "@/lib/anomaly";
 import type { TpClient } from "@/lib/tp/client";
 import { anomalyId, dedupeCheapest, type SnapshotRow, toSnapshot } from "./shared";
 
+// L3 scans these hubs for price anomalies, one per hour (round-robin).
+// Home hubs (SVX/MOW/LED) + transit/third-country hubs.
 export const TRANSIT_HUBS = [
+  "SVX",
+  "MOW",
+  "LED",
   "EVN",
   "TBS",
   "IST",
