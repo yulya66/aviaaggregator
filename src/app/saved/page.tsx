@@ -39,7 +39,7 @@ export default async function SavedPage() {
         <input
           name="origin_iata"
           required
-          placeholder="Откуда (EKB)"
+          placeholder="Откуда (SVX)"
           maxLength={3}
           className="rounded border border-gray-300 px-3 py-2 uppercase"
         />
