@@ -1,4 +1,5 @@
 import { cityName } from "@/data/airports";
+import { formatDate } from "@/lib/format";
 
 type DealCardProps = {
   origin: string;
@@ -41,7 +42,7 @@ export function DealCard({
           )}
         </div>
         <p className="mt-1 text-sm text-gray-600">
-          {departDate} · {transfers === 0 ? "прямой" : `пересадок: ${transfers}`}
+          {formatDate(departDate)} · {transfers === 0 ? "прямой" : `пересадок: ${transfers}`}
           {airline ? ` · ${airline}` : ""}
         </p>
       </div>

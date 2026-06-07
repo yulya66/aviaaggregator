@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { cityName } from "@/data/airports";
+import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { createSavedSearch, deleteSavedSearch } from "./actions";
 
@@ -102,7 +103,8 @@ export default async function SavedPage() {
                   {s.destination_iata ? cityName(s.destination_iata) : "куда угодно"}
                 </span>
                 <p className="mt-1 text-sm text-gray-600">
-                  {s.date_from} … {s.date_to} · до {RUB.format(s.max_price_rub)}
+                  {formatDate(s.date_from)} … {formatDate(s.date_to)} · до{" "}
+                  {RUB.format(s.max_price_rub)}
                 </p>
               </div>
               <form action={deleteSavedSearch}>
