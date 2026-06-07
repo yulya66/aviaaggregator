@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cityName } from "@/data/airports";
 import { createClient } from "@/lib/supabase/server";
 import { createSavedSearch, deleteSavedSearch } from "./actions";
 
@@ -93,8 +94,12 @@ export default async function SavedPage() {
               className="flex items-center justify-between rounded border border-gray-200 px-4 py-3"
             >
               <div>
-                <span className="font-semibold">
-                  {s.origin_iata} → {s.destination_iata ?? "куда угодно"}
+                <span
+                  className="font-semibold"
+                  title={`${s.origin_iata} → ${s.destination_iata ?? ""}`}
+                >
+                  {cityName(s.origin_iata)} →{" "}
+                  {s.destination_iata ? cityName(s.destination_iata) : "куда угодно"}
                 </span>
                 <p className="mt-1 text-sm text-gray-600">
                   {s.date_from} … {s.date_to} · до {RUB.format(s.max_price_rub)}

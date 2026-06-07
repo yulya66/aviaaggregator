@@ -1,3 +1,5 @@
+import { cityName } from "@/data/airports";
+
 type DealCardProps = {
   origin: string;
   destination: string;
@@ -29,8 +31,8 @@ export function DealCard({
     <article className="flex items-center justify-between rounded-lg border border-gray-200 p-4">
       <div>
         <div className="flex items-center gap-2">
-          <span className="font-semibold">
-            {origin} → {destination}
+          <span className="font-semibold" title={`${origin} → ${destination}`}>
+            {cityName(origin)} → {cityName(destination)}
           </span>
           {badge && (
             <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
