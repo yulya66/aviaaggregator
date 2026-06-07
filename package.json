@@ -2,7 +2,6 @@
   "name": "aviaaggregator",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@11.1.3",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -13,13 +12,6 @@
     "format": "biome format --write .",
     "test": "vitest run",
     "test:watch": "vitest"
-  },
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "^11.1.3",
-      "onFail": "download"
-    }
   },
   "type": "module",
   "dependencies": {
