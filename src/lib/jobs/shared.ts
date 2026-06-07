@@ -29,7 +29,8 @@ export function toSnapshot(origin: string, p: TpLatestPrice): SnapshotRow {
     origin_iata: origin,
     destination_iata: p.destination,
     depart_date: p.depart_date,
-    return_date: p.return_date ?? null,
+    // Travelpayouts returns "" (not null) for one-way return dates → coerce to null for the date column.
+    return_date: p.return_date || null,
     price_rub: p.value,
     airline: p.airline ?? null,
     transfers: p.number_of_changes ?? 0,
@@ -52,7 +53,7 @@ export function toDeal(origin: string, p: TpLatestPrice, marker: string, nowIso:
       origin,
       destination: p.destination,
       departDate: p.depart_date,
-      returnDate: p.return_date,
+      returnDate: p.return_date || null,
       marker,
       dealKind: "l2",
       dealId: id,
@@ -66,6 +67,7 @@ export function toDeal(origin: string, p: TpLatestPrice, marker: string, nowIso:
 export function dedupeCheapest(prices: TpLatestPrice[]): TpLatestPrice[] {
   const best = new Map<string, TpLatestPrice>();
   for (const p of prices) {
+    if (!p.depart_date) continue; // skip entries with no depart date (depart_date is NOT NULL)
     const key = `${p.destination}_${p.depart_date}`;
     const current = best.get(key);
     if (!current || p.value < current.value) best.set(key, p);
