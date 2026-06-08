@@ -63,7 +63,7 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
 
   return (
     <div>
-      <div className="sticky top-[60px] z-10 mt-6 rounded-card border border-line bg-card/90 p-5 backdrop-blur-md">
+      <div className="z-10 mt-6 rounded-card border border-line bg-card/90 p-5 backdrop-blur-md sm:sticky sm:top-[60px]">
         <div className="flex items-baseline justify-between">
           <div>
             <p className="kicker">Цена до</p>
