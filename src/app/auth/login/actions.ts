@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -43,6 +44,9 @@ export async function authenticate(_prev: LoginState, formData: FormData): Promi
     if (error) return { status: "error", message: ru(error.message) };
   }
 
+  // Refresh the layout so the header (Nav) re-renders with the logged-in state
+  // (otherwise it keeps showing «Вход» from the cached logged-out layout).
+  revalidatePath("/", "layout");
   redirect("/");
 }
 
