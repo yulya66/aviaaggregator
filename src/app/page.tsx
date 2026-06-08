@@ -174,11 +174,9 @@ export default async function HomePage({
           } satisfies FeedCard;
         });
     }
+    // Scale the slider to this route's real fares (Стамбул can exceed 50k) — no fixed cap.
     const routeCap = routeItems.length
-      ? Math.min(
-          50000,
-          Math.max(5000, Math.ceil(Math.max(...routeItems.map((i) => i.priceRub)) / 1000) * 1000),
-        )
+      ? Math.max(5000, Math.ceil(Math.max(...routeItems.map((i) => i.priceRub)) / 1000) * 1000)
       : 50000;
 
     return (

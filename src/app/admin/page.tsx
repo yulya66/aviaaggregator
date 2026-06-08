@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { isAdminEmail } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -13,18 +15,26 @@ const JOBS = [
   "poll_digest",
 ];
 
-export default async function StatusPage() {
+const API_BUDGET = 5000;
+
+export default async function AdminPage() {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!isAdminEmail(user?.email)) redirect("/");
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const [runsRes, budgetRes] = await Promise.all([
+  const [runsRes, budgetRes, dealsRes, anomRes] = await Promise.all([
     supabase
       .from("cron_runs")
       .select("job, started_at, finished_at, api_calls, rows_inserted, error")
       .order("started_at", { ascending: false })
       .limit(200),
     supabase.from("cron_runs").select("api_calls").gte("started_at", since),
+    supabase.from("deals").select("*", { count: "exact", head: true }).eq("is_active", true),
+    supabase.from("anomalies").select("*", { count: "exact", head: true }).eq("is_active", true),
   ]);
 
   const runs = runsRes.data ?? [];
@@ -34,15 +44,34 @@ export default async function StatusPage() {
   }
 
   const apiCallsLast24h = (budgetRes.data ?? []).reduce((sum, r) => sum + (r.api_calls ?? 0), 0);
-  const API_BUDGET = 5000;
   const budgetPct = Math.min(100, (apiCallsLast24h / API_BUDGET) * 100);
+
+  const stats = [
+    { label: "Активных рейсов", value: dealsRes.count ?? 0 },
+    { label: "Активных аномалий", value: anomRes.count ?? 0 },
+    { label: "API за 24ч", value: `${apiCallsLast24h} / ${API_BUDGET}` },
+  ];
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
-      <p className="kicker">Observability</p>
+      <p className="kicker">Только для администратора</p>
       <h1 className="mt-2 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
-        Статус
+        Админка
       </h1>
+      <p className="mt-3 font-mono text-[0.7rem] uppercase tracking-wider text-muted">
+        {user?.email}
+      </p>
+
+      <section className="mt-8 grid grid-cols-3 gap-3">
+        {stats.map((s) => (
+          <div key={s.label} className="rounded-card border border-line bg-card p-4">
+            <p className="font-mono text-xl font-bold tabular-nums">{s.value}</p>
+            <p className="mt-1 font-mono text-[0.62rem] uppercase tracking-wider text-muted">
+              {s.label}
+            </p>
+          </div>
+        ))}
+      </section>
 
       <section className="mt-8 rounded-card border border-line bg-card p-6">
         <div className="flex items-baseline justify-between">

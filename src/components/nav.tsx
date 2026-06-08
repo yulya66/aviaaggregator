@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isAdminEmail } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export async function Nav() {
@@ -6,6 +7,7 @@ export async function Nav() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const admin = isAdminEmail(user?.email);
 
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-paper/85 backdrop-blur-md">
@@ -26,14 +28,16 @@ export async function Nav() {
           <Link href="/anomalies" className="transition hover:text-accent">
             Аномалии
           </Link>
-          <Link href="/status" className="hidden transition hover:text-accent sm:inline">
-            Статус
-          </Link>
           {user ? (
             <>
               <Link href="/saved" className="transition hover:text-accent">
                 Поиски
               </Link>
+              {admin && (
+                <Link href="/admin" className="text-accent transition hover:opacity-70">
+                  Админ
+                </Link>
+              )}
               <form action="/auth/logout" method="post">
                 <button
                   type="submit"
