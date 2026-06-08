@@ -3,6 +3,16 @@
 > Deliverable of Task 1 of `docs/superpowers/plans/2026-06-08-plan-live-price-check.md`.
 > Gathered from Travelpayouts Help Center + API reference (June 2026). Endpoints shown as documented (http://) — **use https:// in code**. Some exact JSON field paths must be re-confirmed against a live response during implementation (Task 2 fixture).
 
+## 🚫 BLOCKER (confirmed live, 2026-06-08)
+The real-time **flight_search API is NOT publicly accessible.** Travelpayouts grants it only to
+projects with **≥ 50 000 MAU** (monthly active users) **and** by request to support@travelpayouts.com.
+Our live spike (`/api/live-search` → `initSearch`) reached the API but got **HTTP 403 "Forbidden"** —
+i.e. the token is not authorized for flight_search (an account-level gate, NOT a code/signature bug).
+**Consequence:** live price check is **on hold** until the site has real traffic (50k MAU) or TP support
+grants access. Code (`lib/tp/live-search.ts`, `/api/live-search` debug route) is built & ready for that
+day; the signature could not be validated because the endpoint is forbidden before it's evaluated.
+Until then: keep the cached feed + "цена ориентировочная, проверьте на Aviasales" disclaimer + frequent cron.
+
 ## TL;DR for our design
 - Live search is **async**: `POST /v1/flight_search` → `search_id`, then **poll** `GET /v1/flight_search_results?uuid=<id>` until done. Results live ~15 min on TP's side.
 - The request must be **signed** (md5 of token + nesting-aware-sorted param values, colon-joined).

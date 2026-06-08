@@ -1,5 +1,11 @@
 # Plan — Live Price Check (Travelpayouts flight_search) Implementation Plan
 
+> **🚫 BLOCKED (2026-06-08):** Task 1 research + a live spike found that TP's real-time `flight_search`
+> API is gated — granted only to projects with **≥ 50 000 MAU** and by support request. The live spike
+> got **403 Forbidden** (account-level access denied, not a code bug). The core code (`lib/tp/live-search.ts`
+> + `/api/live-search` debug route) is built and committed, ready for the day access is granted. **Do not
+> execute Tasks 2–7 until flight_search access exists.** See `docs/research/tp-flight-search.md` §BLOCKER.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans. REQUIRED RESEARCH FIRST: this plan depends on Travelpayouts flight_search API details (request signing, init/poll endpoints, response shape) — Task 1 is a research task that MUST complete before Tasks 2+.
 
 **Goal:** When a user opens a deal, fetch its **current, real** price via Travelpayouts live-search (an actual real-time search across agencies) instead of relying on the cached `prices/latest` data, so the price the user acts on matches what Aviasales shows.
