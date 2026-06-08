@@ -29,9 +29,9 @@ export default async function HomePage() {
 
   if (dealsRes.error || anomaliesRes.error) {
     return (
-      <main className="mx-auto max-w-3xl p-8">
-        <h1 className="text-2xl font-bold">Лента</h1>
-        <p className="mt-4 text-gray-600">Не удалось загрузить, обновите через минуту.</p>
+      <main className="mx-auto max-w-3xl px-6 py-12">
+        <h1 className="font-display text-3xl font-extrabold">Лента</h1>
+        <p className="mt-4 text-muted">Не удалось загрузить, обновите через минуту.</p>
       </main>
     );
   }
@@ -70,14 +70,18 @@ export default async function HomePage() {
   const items: FeedCard[] = raw.map((r) => r.card);
 
   return (
-    <main className="mx-auto max-w-3xl p-8">
-      <h1 className="text-2xl font-bold">Лента дешёвых рейсов</h1>
-      <p className="mt-2 text-gray-600">
-        Все хабы (родные + транзитные). Подвиньте ползунок, чтобы отфильтровать по цене.
+    <main className="mx-auto max-w-3xl px-6 py-10">
+      <p className="kicker">Родные + транзитные хабы</p>
+      <h1 className="mt-2 font-display text-4xl font-extrabold leading-[1.04] tracking-tight sm:text-5xl">
+        Дешёвые рейсы
+      </h1>
+      <p className="mt-3 max-w-md text-sm text-muted">
+        Самые низкие цены из ваших городов и транзитных узлов в одной ленте. Двигайте ползунок,
+        чтобы отсечь всё дороже нужного.
       </p>
 
       {items.length === 0 ? (
-        <p className="mt-8 text-gray-600">
+        <p className="mt-10 text-muted">
           Пока пусто. После первых прогонов cron здесь появятся предложения.
         </p>
       ) : (

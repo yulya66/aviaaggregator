@@ -1,9 +1,134 @@
 @import "tailwindcss";
 
+/* ── Design tokens: "boarding pass / departures board" ───────────────────────── */
+@theme {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-unbounded), var(--font-manrope), sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  --color-paper: #f3ede1;
+  --color-card: #fffdf8;
+  --color-ink: #181410;
+  --color-muted: #7c7261;
+  --color-line: #e3d9c6;
+  --color-accent: #e5482b;
+  --color-accent-soft: #f9e6df;
+  --color-sky: #1c4a63;
+
+  --radius-card: 14px;
+}
+
 :root {
   color-scheme: light;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  font-family: system-ui, -apple-system, sans-serif;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Atmosphere: faint dot grid + warm corner glows on the paper. */
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(24, 20, 16, 0.05) 1px, transparent 0),
+    radial-gradient(60% 50% at 85% -5%, rgba(229, 72, 43, 0.07), transparent 70%),
+    radial-gradient(55% 45% at 5% 105%, rgba(28, 74, 99, 0.07), transparent 70%);
+  background-size:
+    22px 22px,
+    100% 100%,
+    100% 100%;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* Small uppercase editorial label */
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+/* Ticket perforation between route and price on a deal card */
+.ticket-divider {
+  position: relative;
+  border-left: 2px dashed var(--color-line);
+}
+.ticket-divider::before,
+.ticket-divider::after {
+  content: "";
+  position: absolute;
+  left: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-paper);
+}
+.ticket-divider::before {
+  top: -9px;
+}
+.ticket-divider::after {
+  bottom: -9px;
+}
+
+/* Price-range slider styled like a runway / tape */
+input[type="range"].fare-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background:
+    linear-gradient(var(--color-accent), var(--color-accent)) no-repeat,
+    var(--color-line);
+  background-size: var(--fill, 100%) 100%;
+  cursor: pointer;
+}
+input[type="range"].fare-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-card);
+  border: 3px solid var(--color-accent);
+  box-shadow: 0 2px 8px rgba(229, 72, 43, 0.35);
+  transition: transform 0.12s ease;
+}
+input[type="range"].fare-range::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+}
+input[type="range"].fare-range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-card);
+  border: 3px solid var(--color-accent);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 999px;
+  border: 3px solid var(--color-paper);
 }

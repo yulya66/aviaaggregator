@@ -19,9 +19,9 @@ export default async function AnomaliesPage() {
 
   if (error) {
     return (
-      <main className="mx-auto max-w-3xl p-8">
-        <h1 className="text-2xl font-bold">Аномалии</h1>
-        <p className="mt-4 text-gray-600">Не удалось загрузить, обновите через минуту.</p>
+      <main className="mx-auto max-w-3xl px-6 py-12">
+        <h1 className="font-display text-3xl font-extrabold">Аномалии</h1>
+        <p className="mt-4 text-muted">Не удалось загрузить, обновите через минуту.</p>
       </main>
     );
   }
@@ -29,20 +29,30 @@ export default async function AnomaliesPage() {
   const rows = data ?? [];
 
   return (
-    <main className="mx-auto max-w-3xl p-8">
-      <h1 className="text-2xl font-bold">Аномалии (L3)</h1>
-      <p className="mt-2 text-gray-600">
-        Выбросы цены из транзитных хабов. Подсветка — скидка ≥ 50%.
+    <main className="mx-auto max-w-3xl px-6 py-10">
+      <p className="kicker">L3 · детектор выбросов</p>
+      <h1 className="mt-2 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
+        Аномалии
+      </h1>
+      <p className="mt-3 max-w-md text-sm text-muted">
+        Цены, рухнувшие заметно ниже своей медианы. Красная рамка — скидка ≥ 50%.
       </p>
 
       {rows.length === 0 ? (
-        <p className="mt-8 text-gray-600">Аномалий пока нет — движок копит снапшоты ~14 дней.</p>
+        <p className="mt-10 text-muted">Аномалий пока нет — движок копит снапшоты ~14 дней.</p>
       ) : (
         <div className="mt-6 space-y-3">
           {rows.map((a) => {
             const discount = Math.round(Number(a.discount_pct));
             return (
-              <div key={a.id} className={discount >= 50 ? "rounded-lg ring-2 ring-red-400" : ""}>
+              <div
+                key={a.id}
+                className={
+                  discount >= 50
+                    ? "rounded-card ring-2 ring-accent ring-offset-2 ring-offset-paper"
+                    : ""
+                }
+              >
                 <DealCard
                   route={`${cityName(a.origin_iata)} → ${cityName(a.destination_iata)}`}
                   routeTitle={`${a.origin_iata} → ${a.destination_iata}`}

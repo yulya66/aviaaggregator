@@ -3,7 +3,7 @@
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!**/.next", "!**/node_modules", "!**/supabase/.branches"]
+    "includes": ["**", "!**/.next", "!**/node_modules", "!**/supabase/.branches", "!**/globals.css"]
   },
   "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
   "assist": { "enabled": true, "actions": { "source": { "organizeImports": "on" } } },

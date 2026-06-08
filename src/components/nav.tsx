@@ -8,32 +8,46 @@ export async function Nav() {
   } = await supabase.auth.getUser();
 
   return (
-    <header className="border-b border-gray-200">
-      <nav className="mx-auto flex max-w-5xl items-center justify-between p-4">
-        <Link href="/" className="font-bold">
-          Авиа-агрегатор
+    <header className="sticky top-0 z-50 border-b border-line bg-paper/85 backdrop-blur-md">
+      <nav className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3.5">
+        <Link href="/" className="flex items-center gap-2.5">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-accent text-sm text-card shadow-[0_2px_10px_rgba(229,72,43,0.4)]">
+            ✈
+          </span>
+          <span className="font-display text-lg font-extrabold tracking-tight">
+            Авиа<span className="text-accent">·</span>агрегатор
+          </span>
         </Link>
-        <div className="flex items-center gap-4 text-sm">
-          <Link href="/anomalies" className="text-gray-600 hover:text-black">
+
+        <div className="flex items-center gap-4 font-mono text-[0.68rem] uppercase tracking-[0.18em] sm:gap-5">
+          <Link href="/" className="hidden transition hover:text-accent sm:inline">
+            Лента
+          </Link>
+          <Link href="/anomalies" className="transition hover:text-accent">
             Аномалии
           </Link>
-          <Link href="/status" className="text-gray-600 hover:text-black">
+          <Link href="/status" className="hidden transition hover:text-accent sm:inline">
             Статус
           </Link>
           {user ? (
             <>
-              <Link href="/saved" className="text-gray-600 hover:text-black">
-                Мои поиски
+              <Link href="/saved" className="transition hover:text-accent">
+                Поиски
               </Link>
-              <span className="text-gray-600">{user.email}</span>
               <form action="/auth/logout" method="post">
-                <button type="submit" className="text-gray-600 hover:text-black">
+                <button
+                  type="submit"
+                  className="uppercase tracking-[0.18em] transition hover:text-accent"
+                >
                   Выход
                 </button>
               </form>
             </>
           ) : (
-            <Link href="/auth/login" className="text-gray-600 hover:text-black">
+            <Link
+              href="/auth/login"
+              className="rounded-full bg-ink px-3.5 py-1.5 text-card transition hover:bg-accent"
+            >
               Вход
             </Link>
           )}

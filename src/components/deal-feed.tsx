@@ -27,15 +27,19 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
   const [limit, setLimit] = useState(maxPrice);
 
   const shown = items.filter((i) => i.priceRub <= limit);
+  const fill = maxPrice > 0 ? (limit / maxPrice) * 100 : 100;
 
   return (
     <div>
-      <div className="mt-6 rounded-lg border border-gray-200 p-4">
-        <div className="flex items-center justify-between text-sm">
-          <span className="font-medium">Цена до {RUB.format(limit)}</span>
-          <span className="text-gray-500">
-            показано {shown.length} из {items.length}
-          </span>
+      <div className="sticky top-[60px] z-10 mt-6 rounded-card border border-line bg-card/90 p-5 backdrop-blur-md">
+        <div className="flex items-baseline justify-between">
+          <div>
+            <p className="kicker">Цена до</p>
+            <p className="font-mono text-2xl font-bold tabular-nums">{RUB.format(limit)}</p>
+          </div>
+          <p className="font-mono text-[0.7rem] uppercase tracking-widest text-muted">
+            {shown.length} / {items.length} рейсов
+          </p>
         </div>
         <input
           type="range"
@@ -44,17 +48,18 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
           step={500}
           value={limit}
           onChange={(e) => setLimit(Number(e.target.value))}
-          className="mt-2 w-full"
+          className="fare-range mt-4"
+          style={{ ["--fill" as string]: `${fill}%` }}
           aria-label="Максимальная цена"
         />
       </div>
 
       {shown.length === 0 ? (
-        <p className="mt-6 text-gray-600">
+        <p className="mt-8 text-center text-muted">
           Нет билетов дешевле {RUB.format(limit)}. Подвиньте ползунок выше.
         </p>
       ) : (
-        <div className="mt-4 space-y-3">
+        <div className="mt-5 space-y-3">
           {shown.map((item) => (
             <DealCard
               key={item.key}
