@@ -50,7 +50,7 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
         key={h.code}
         type="button"
         onClick={() => toggleHub(h.code)}
-        className={`rounded-full border px-3 py-1 font-mono text-[0.68rem] uppercase tracking-wider transition ${
+        className={`whitespace-nowrap rounded-full border px-3 py-1 font-mono text-[0.68rem] uppercase tracking-wider transition ${
           active
             ? "border-accent bg-accent text-card"
             : "border-line text-muted hover:border-ink hover:text-ink"
