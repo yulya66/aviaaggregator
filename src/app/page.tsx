@@ -41,6 +41,8 @@ export default async function HomePage() {
       sortAt: d.last_seen_at as string,
       card: {
         key: `deal-${d.id}`,
+        origin: d.origin_iata as string,
+        destination: d.destination_iata as string,
         route: `${cityName(d.origin_iata)} → ${cityName(d.destination_iata)}`,
         routeTitle: `${d.origin_iata} → ${d.destination_iata}`,
         dateLabel: formatDate(d.depart_date),
@@ -54,6 +56,8 @@ export default async function HomePage() {
       sortAt: a.detected_at as string,
       card: {
         key: `anomaly-${a.id}`,
+        origin: a.origin_iata as string,
+        destination: a.destination_iata as string,
         route: `${cityName(a.origin_iata)} → ${cityName(a.destination_iata)}`,
         routeTitle: `${a.origin_iata} → ${a.destination_iata}`,
         dateLabel: formatDate(a.depart_date),

@@ -5,6 +5,8 @@ import { DealCard } from "./deal-card";
 
 export type FeedCard = {
   key: string;
+  origin: string; // IATA, for hub filtering
+  destination: string; // IATA
   route: string;
   routeTitle: string;
   dateLabel: string;
@@ -21,13 +23,31 @@ const RUB = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 0,
 });
 
-/** Client feed with a max-price slider that filters the (server-loaded) cards live. */
-export function DealFeed({ items }: { items: FeedCard[] }) {
-  const maxPrice = items.reduce((m, i) => Math.max(m, i.priceRub), 0);
-  const [limit, setLimit] = useState(maxPrice);
+const MAX_PRICE = 50000;
 
-  const shown = items.filter((i) => i.priceRub <= limit);
-  const fill = maxPrice > 0 ? (limit / maxPrice) * 100 : 100;
+const HOME_HUBS = [
+  { code: "SVX", label: "Екб" },
+  { code: "MOW", label: "Мск" },
+  { code: "LED", label: "Спб" },
+  { code: "CEK", label: "Челябинск" },
+  { code: "PEE", label: "Пермь" },
+  { code: "TJM", label: "Тюмень" },
+];
+
+/** Client feed with a fixed price slider + home-hub filter chips. */
+export function DealFeed({ items }: { items: FeedCard[] }) {
+  const [limit, setLimit] = useState(MAX_PRICE);
+  const [hubs, setHubs] = useState<string[]>([]);
+
+  const toggleHub = (code: string) =>
+    setHubs((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
+
+  const shown = items.filter(
+    (i) =>
+      i.priceRub <= limit &&
+      (hubs.length === 0 || hubs.includes(i.origin) || hubs.includes(i.destination)),
+  );
+  const fill = (limit / MAX_PRICE) * 100;
 
   return (
     <div>
@@ -38,13 +58,13 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
             <p className="font-mono text-2xl font-bold tabular-nums">{RUB.format(limit)}</p>
           </div>
           <p className="font-mono text-[0.7rem] uppercase tracking-widest text-muted">
-            {shown.length} / {items.length} рейсов
+            {shown.length} рейсов
           </p>
         </div>
         <input
           type="range"
           min={0}
-          max={maxPrice}
+          max={MAX_PRICE}
           step={500}
           value={limit}
           onChange={(e) => setLimit(Number(e.target.value))}
@@ -52,11 +72,31 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
           style={{ ["--fill" as string]: `${fill}%` }}
           aria-label="Максимальная цена"
         />
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {HOME_HUBS.map((h) => {
+            const active = hubs.includes(h.code);
+            return (
+              <button
+                key={h.code}
+                type="button"
+                onClick={() => toggleHub(h.code)}
+                className={`rounded-full border px-3 py-1 font-mono text-[0.68rem] uppercase tracking-wider transition ${
+                  active
+                    ? "border-accent bg-accent text-card"
+                    : "border-line text-muted hover:border-ink hover:text-ink"
+                }`}
+              >
+                {h.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {shown.length === 0 ? (
         <p className="mt-8 text-center text-muted">
-          Нет билетов дешевле {RUB.format(limit)}. Подвиньте ползунок выше.
+          Ничего под эти фильтры. Поднимите цену или снимите города.
         </p>
       ) : (
         <div className="mt-5 space-y-3">
