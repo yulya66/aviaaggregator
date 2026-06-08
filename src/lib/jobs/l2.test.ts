@@ -35,8 +35,8 @@ describe("runPollL2", () => {
 
     const result = await runPollL2(db, tp, "555");
 
-    expect(tp.pricesLatest).toHaveBeenCalledTimes(HOME_HUBS.length); // one call per home hub
-    expect(result.api_calls).toBe(HOME_HUBS.length);
+    expect(tp.pricesLatest).toHaveBeenCalledTimes(HOME_HUBS.length * 2); // outbound + inbound per hub
+    expect(result.api_calls).toBe(HOME_HUBS.length * 2);
     expect(rpc).toHaveBeenCalledWith(
       "record_snapshots",
       expect.objectContaining({ p_rows: expect.any(Array) }),

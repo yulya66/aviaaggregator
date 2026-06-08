@@ -14,14 +14,26 @@ export async function runPollL2(
   marker: string,
 ): Promise<JobResult> {
   const nowIso = new Date().toISOString();
-  let apiCalls = 0;
   const snapshots: SnapshotRow[] = [];
   const deals: DealRow[] = [];
 
-  for (const origin of HOME_HUBS) {
-    const results = await tp.pricesLatest({ origin, limit: 200 });
-    apiCalls++;
-    for (const p of dedupeCheapest(results)) {
+  // Outbound (FROM each home hub) + inbound (INTO each home hub, e.g. Тбилиси → Екатеринбург),
+  // all in parallel to stay within the Vercel function time limit.
+  const tasks = HOME_HUBS.flatMap((hub) => [
+    tp.pricesLatest({ origin: hub, limit: 200 }).then((rows) => ({ inbound: false, hub, rows })),
+    tp
+      .pricesLatest({ destination: hub, limit: 200 })
+      .then((rows) => ({ inbound: true, hub, rows })),
+  ]);
+  const settled = await Promise.allSettled(tasks);
+  const apiCalls = settled.length;
+
+  for (const s of settled) {
+    if (s.status !== "fulfilled") continue;
+    const { inbound, hub, rows } = s.value;
+    for (const p of dedupeCheapest(rows)) {
+      // Outbound: the hub is the origin. Inbound: the flight's own origin → into the hub.
+      const origin = inbound ? p.origin : hub;
       snapshots.push(toSnapshot(origin, p));
       deals.push(toDeal(origin, p, marker, nowIso));
     }

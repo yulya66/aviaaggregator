@@ -14,7 +14,10 @@ export type TpLatestPrice = {
 };
 
 export type PricesLatestParams = {
-  origin: string;
+  /** Flights FROM this hub. Omit to query by destination only. */
+  origin?: string;
+  /** Flights INTO this hub (e.g. Тбилиси → Екатеринбург). */
+  destination?: string;
   limit?: number;
 };
 
@@ -44,10 +47,12 @@ function tpToken(): string {
 
 export async function pricesLatest({
   origin,
+  destination,
   limit = 200,
 }: PricesLatestParams): Promise<TpLatestPrice[]> {
   const url = new URL(`${TP_BASE}/v2/prices/latest`);
-  url.searchParams.set("origin", origin);
+  if (origin) url.searchParams.set("origin", origin);
+  if (destination) url.searchParams.set("destination", destination);
   url.searchParams.set("currency", "rub");
   url.searchParams.set("period_type", "year");
   url.searchParams.set("one_way", "true");

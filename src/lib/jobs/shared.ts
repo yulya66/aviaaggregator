@@ -68,7 +68,7 @@ export function dedupeCheapest(prices: TpLatestPrice[]): TpLatestPrice[] {
   const best = new Map<string, TpLatestPrice>();
   for (const p of prices) {
     if (!p.depart_date) continue; // skip entries with no depart date (depart_date is NOT NULL)
-    const key = `${p.destination}_${p.depart_date}`;
+    const key = `${p.origin}_${p.destination}_${p.depart_date}`;
     const current = best.get(key);
     if (!current || p.value < current.value) best.set(key, p);
   }

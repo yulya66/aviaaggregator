@@ -15,15 +15,15 @@ export default async function HomePage() {
         "id, origin_iata, destination_iata, depart_date, price_rub, airline, transfers, deep_link, last_seen_at",
       )
       .eq("is_active", true)
-      .order("last_seen_at", { ascending: false })
-      .limit(100),
+      .order("price_rub", { ascending: true })
+      .limit(120),
     supabase
       .from("anomalies")
       .select(
         "id, origin_iata, destination_iata, depart_date, price_rub, airline, transfers, deep_link, discount_pct, detected_at",
       )
       .eq("is_active", true)
-      .order("detected_at", { ascending: false })
+      .order("price_rub", { ascending: true })
       .limit(50),
   ]);
 
@@ -66,7 +66,7 @@ export default async function HomePage() {
     })),
   ];
 
-  raw.sort((x, y) => (x.sortAt < y.sortAt ? 1 : -1));
+  raw.sort((x, y) => x.card.priceRub - y.card.priceRub);
   const items: FeedCard[] = raw.map((r) => r.card);
 
   return (
