@@ -8,7 +8,6 @@ export type FeedCard = {
   key: string;
   origin: string; // IATA, for hub filtering
   destination: string; // IATA
-  departDate: string; // YYYY-MM-DD, for date filtering
   route: string;
   routeTitle: string;
   dateLabel: string;
@@ -32,8 +31,6 @@ const RENDER_CAP = 200;
 export function DealFeed({ items }: { items: FeedCard[] }) {
   const [limit, setLimit] = useState(MAX_PRICE);
   const [hubs, setHubs] = useState<string[]>([]);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
 
   const toggleHub = (code: string) =>
     setHubs((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
@@ -41,9 +38,7 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
   const shown = items.filter(
     (i) =>
       i.priceRub <= limit &&
-      (hubs.length === 0 || hubs.includes(i.origin) || hubs.includes(i.destination)) &&
-      (!from || i.departDate >= from) &&
-      (!to || i.departDate <= to),
+      (hubs.length === 0 || hubs.includes(i.origin) || hubs.includes(i.destination)),
   );
   const visible = shown.slice(0, RENDER_CAP);
   const fill = (limit / MAX_PRICE) * 100;
@@ -95,35 +90,6 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
 
         <p className="kicker mt-3">Транзитные хабы</p>
         <div className="mt-2 flex flex-wrap gap-2">{TRANSIT_HUBS.map(chip)}</div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2 font-mono text-[0.68rem] uppercase tracking-wider text-muted">
-          <span>Даты</span>
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="rounded-lg border border-line bg-paper px-2 py-1 text-ink outline-none focus:border-accent"
-          />
-          <span>—</span>
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="rounded-lg border border-line bg-paper px-2 py-1 text-ink outline-none focus:border-accent"
-          />
-          {(from || to) && (
-            <button
-              type="button"
-              onClick={() => {
-                setFrom("");
-                setTo("");
-              }}
-              className="text-accent transition hover:underline"
-            >
-              сброс
-            </button>
-          )}
-        </div>
       </div>
 
       {shown.length === 0 ? (

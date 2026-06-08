@@ -21,29 +21,40 @@ type DealRowDb = {
   discount_pct?: number;
 };
 
-export default async function HomePage() {
-  const supabase = await createClient();
+const inputCls =
+  "rounded-lg border border-line bg-paper px-3 py-2 font-mono text-sm text-ink outline-none focus:border-accent";
 
-  // One query per home hub (cheapest fares touching that city, either direction) so every
-  // city is represented evenly — the globally-cheapest set was dominated by one or two hubs.
-  const [hubResults, anomaliesRes] = await Promise.all([
-    Promise.all(
-      ALL_HUB_CODES.map((hub) =>
-        supabase
-          .from("deals")
-          .select(DEAL_COLS)
-          .eq("is_active", true)
-          .or(`origin_iata.eq.${hub},destination_iata.eq.${hub}`)
-          .order("price_rub", { ascending: true })
-          .limit(70),
-      ),
-    ),
-    supabase
-      .from("anomalies")
-      .select(`${DEAL_COLS}, discount_pct`)
-      .eq("is_active", true)
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
+  const sp = await searchParams;
+  const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const from = sp.from || today; // default: only future flights
+  const to = sp.to || "";
+
+  // One query per hub (cheapest fares touching that city, either direction) within the date
+  // range, so every city is represented evenly and the date filter actually re-fetches data.
+  const dealQueries = ALL_HUB_CODES.map((hub) => {
+    let q = supabase.from("deals").select(DEAL_COLS).eq("is_active", true).gte("depart_date", from);
+    if (to) q = q.lte("depart_date", to);
+    return q
+      .or(`origin_iata.eq.${hub},destination_iata.eq.${hub}`)
       .order("price_rub", { ascending: true })
-      .limit(60),
+      .limit(70);
+  });
+  let anomQ = supabase
+    .from("anomalies")
+    .select(`${DEAL_COLS}, discount_pct`)
+    .eq("is_active", true)
+    .gte("depart_date", from);
+  if (to) anomQ = anomQ.lte("depart_date", to);
+
+  const [hubResults, anomaliesRes] = await Promise.all([
+    Promise.all(dealQueries),
+    anomQ.order("price_rub", { ascending: true }).limit(60),
   ]);
 
   if (hubResults.some((r) => r.error) || anomaliesRes.error) {
@@ -65,7 +76,6 @@ export default async function HomePage() {
     key: `${prefix}-${d.id}`,
     origin: d.origin_iata,
     destination: d.destination_iata,
-    departDate: d.depart_date,
     route: `${cityName(d.origin_iata)} → ${cityName(d.destination_iata)}`,
     routeTitle: `${d.origin_iata} → ${d.destination_iata}`,
     dateLabel: formatDate(d.depart_date),
@@ -88,13 +98,40 @@ export default async function HomePage() {
         Дешёвые рейсы
       </h1>
       <p className="mt-3 max-w-md text-sm text-muted">
-        Самые низкие цены — туда и обратно, по всем домашним хабам. Двигайте ползунок, чтобы найти
-        самое горячее предложение.
+        Туда и обратно, по всем хабам. Выберите даты и двигайте ползунок, чтобы найти самое горячее.
       </p>
+
+      <form
+        method="get"
+        className="mt-6 flex flex-wrap items-end gap-3 rounded-card border border-line bg-card p-4"
+      >
+        <label className="flex flex-col gap-1 font-mono text-[0.62rem] uppercase tracking-wider text-muted">
+          Вылет с
+          <input type="date" name="from" defaultValue={from} className={inputCls} />
+        </label>
+        <label className="flex flex-col gap-1 font-mono text-[0.62rem] uppercase tracking-wider text-muted">
+          По
+          <input type="date" name="to" defaultValue={to} className={inputCls} />
+        </label>
+        <button
+          type="submit"
+          className="rounded-lg bg-ink px-4 py-2 font-mono text-xs uppercase tracking-[0.18em] text-card transition hover:bg-accent"
+        >
+          Показать
+        </button>
+        {(sp.from || sp.to) && (
+          <a
+            href="/"
+            className="self-center font-mono text-[0.7rem] uppercase tracking-wider text-accent hover:underline"
+          >
+            сброс
+          </a>
+        )}
+      </form>
 
       {items.length === 0 ? (
         <p className="mt-10 text-muted">
-          Пока пусто. После первых прогонов cron здесь появятся предложения.
+          Нет рейсов в этом диапазоне дат. Расширьте даты или сбросьте фильтр.
         </p>
       ) : (
         <DealFeed items={items} />
