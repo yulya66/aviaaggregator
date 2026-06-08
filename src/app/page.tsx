@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CityAutocomplete } from "@/components/city-autocomplete";
 import { DealCard } from "@/components/deal-card";
 import { DealFeed, type FeedCard } from "@/components/deal-feed";
 import { cityName } from "@/data/airports";
@@ -119,17 +120,17 @@ export default async function HomePage({
               ))}
             </select>
           </label>
-          <label className="col-span-1 flex flex-col gap-1 font-mono text-[0.62rem] uppercase tracking-wider text-muted">
+          <div className="col-span-1 flex flex-col gap-1 font-mono text-[0.62rem] uppercase tracking-wider text-muted">
             Куда
-            <select name="dest" defaultValue={dest} className={inputCls}>
-              <option value="">—</option>
-              {POPULAR_DESTINATIONS.map((o) => (
-                <option key={o.code} value={o.code}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
+            <CityAutocomplete
+              name="dest"
+              defaultCode={dest}
+              defaultLabel={dest ? cityName(dest) : ""}
+              placeholder="Город или страна"
+              className={`${inputCls} w-full`}
+              popular={POPULAR_DESTINATIONS}
+            />
+          </div>
           <label className="flex flex-col gap-1 font-mono text-[0.62rem] uppercase tracking-wider text-muted">
             Вылет с
             <input type="date" name="from" defaultValue={sp.from || ""} className={inputCls} />
