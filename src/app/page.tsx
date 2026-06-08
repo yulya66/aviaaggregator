@@ -1,11 +1,11 @@
 import { DealFeed, type FeedCard } from "@/components/deal-feed";
 import { cityName } from "@/data/airports";
+import { ALL_HUB_CODES } from "@/data/hubs";
 import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const HOME_HUBS = ["SVX", "MOW", "LED", "CEK", "PEE", "TJM", "KUF"];
 const DEAL_COLS =
   "id, origin_iata, destination_iata, depart_date, price_rub, airline, transfers, deep_link";
 
@@ -28,14 +28,14 @@ export default async function HomePage() {
   // city is represented evenly — the globally-cheapest set was dominated by one or two hubs.
   const [hubResults, anomaliesRes] = await Promise.all([
     Promise.all(
-      HOME_HUBS.map((hub) =>
+      ALL_HUB_CODES.map((hub) =>
         supabase
           .from("deals")
           .select(DEAL_COLS)
           .eq("is_active", true)
           .or(`origin_iata.eq.${hub},destination_iata.eq.${hub}`)
           .order("price_rub", { ascending: true })
-          .limit(120),
+          .limit(70),
       ),
     ),
     supabase

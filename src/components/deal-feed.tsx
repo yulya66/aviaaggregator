@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { HOME_HUBS, TRANSIT_HUBS } from "@/data/hubs";
 import { DealCard } from "./deal-card";
 
 export type FeedCard = {
@@ -25,18 +26,9 @@ const RUB = new Intl.NumberFormat("ru-RU", {
 });
 
 const MAX_PRICE = 50000;
+const RENDER_CAP = 200;
 
-const HOME_HUBS = [
-  { code: "SVX", label: "Екб" },
-  { code: "MOW", label: "Мск" },
-  { code: "LED", label: "Спб" },
-  { code: "CEK", label: "Челябинск" },
-  { code: "PEE", label: "Пермь" },
-  { code: "TJM", label: "Тюмень" },
-  { code: "KUF", label: "Самара" },
-];
-
-/** Client feed with a fixed price slider + home-hub filter chips. */
+/** Client feed: fixed price slider + home/transit hub chips + date range. */
 export function DealFeed({ items }: { items: FeedCard[] }) {
   const [limit, setLimit] = useState(MAX_PRICE);
   const [hubs, setHubs] = useState<string[]>([]);
@@ -53,7 +45,26 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
       (!from || i.departDate >= from) &&
       (!to || i.departDate <= to),
   );
+  const visible = shown.slice(0, RENDER_CAP);
   const fill = (limit / MAX_PRICE) * 100;
+
+  const chip = (h: { code: string; label: string }) => {
+    const active = hubs.includes(h.code);
+    return (
+      <button
+        key={h.code}
+        type="button"
+        onClick={() => toggleHub(h.code)}
+        className={`rounded-full border px-3 py-1 font-mono text-[0.68rem] uppercase tracking-wider transition ${
+          active
+            ? "border-accent bg-accent text-card"
+            : "border-line text-muted hover:border-ink hover:text-ink"
+        }`}
+      >
+        {h.label}
+      </button>
+    );
+  };
 
   return (
     <div>
@@ -80,25 +91,10 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
         />
 
         <p className="kicker mt-5">Ваши города — вылет или прилёт</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {HOME_HUBS.map((h) => {
-            const active = hubs.includes(h.code);
-            return (
-              <button
-                key={h.code}
-                type="button"
-                onClick={() => toggleHub(h.code)}
-                className={`rounded-full border px-3 py-1 font-mono text-[0.68rem] uppercase tracking-wider transition ${
-                  active
-                    ? "border-accent bg-accent text-card"
-                    : "border-line text-muted hover:border-ink hover:text-ink"
-                }`}
-              >
-                {h.label}
-              </button>
-            );
-          })}
-        </div>
+        <div className="mt-2 flex flex-wrap gap-2">{HOME_HUBS.map(chip)}</div>
+
+        <p className="kicker mt-3">Транзитные хабы</p>
+        <div className="mt-2 flex flex-wrap gap-2">{TRANSIT_HUBS.map(chip)}</div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2 font-mono text-[0.68rem] uppercase tracking-wider text-muted">
           <span>Даты</span>
@@ -135,21 +131,28 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
           Ничего под эти фильтры. Поднимите цену или снимите города.
         </p>
       ) : (
-        <div className="mt-5 space-y-3">
-          {shown.map((item) => (
-            <DealCard
-              key={item.key}
-              route={item.route}
-              routeTitle={item.routeTitle}
-              dateLabel={item.dateLabel}
-              priceRub={item.priceRub}
-              airline={item.airline}
-              transfers={item.transfers}
-              deepLink={item.deepLink}
-              badge={item.badge}
-            />
-          ))}
-        </div>
+        <>
+          <div className="mt-5 space-y-3">
+            {visible.map((item) => (
+              <DealCard
+                key={item.key}
+                route={item.route}
+                routeTitle={item.routeTitle}
+                dateLabel={item.dateLabel}
+                priceRub={item.priceRub}
+                airline={item.airline}
+                transfers={item.transfers}
+                deepLink={item.deepLink}
+                badge={item.badge}
+              />
+            ))}
+          </div>
+          {shown.length > RENDER_CAP && (
+            <p className="mt-6 text-center font-mono text-[0.72rem] uppercase tracking-wider text-muted">
+              Показаны первые {RENDER_CAP} — уточните фильтры, чтобы увидеть остальное
+            </p>
+          )}
+        </>
       )}
     </div>
   );

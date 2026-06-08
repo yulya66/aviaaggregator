@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { HOME_HUB_CODES, TRANSIT_HUB_CODES } from "@/data/hubs";
 import { buildAviasalesLink } from "@/lib/affiliate";
 import { evaluateAnomaly } from "@/lib/anomaly";
 import type { TpClient } from "@/lib/tp/client";
@@ -11,27 +12,8 @@ import {
   toSnapshot,
 } from "./shared";
 
-// L3 scans these hubs for price anomalies, one per hour (round-robin).
-// Home hubs (SVX/MOW/LED) + transit/third-country hubs.
-export const TRANSIT_HUBS = [
-  "SVX",
-  "MOW",
-  "LED",
-  "CEK",
-  "PEE",
-  "TJM",
-  "KUF",
-  "EVN",
-  "TBS",
-  "IST",
-  "DXB",
-  "BEG",
-  "HEL",
-  "RIX",
-  "TLL",
-  "AYT",
-  "KUT",
-] as const;
+// L3 scans these hubs for anomalies, one per hour (round-robin): home + transit.
+export const TRANSIT_HUBS = [...HOME_HUB_CODES, ...TRANSIT_HUB_CODES];
 
 export type L3Result = {
   api_calls: number;
