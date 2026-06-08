@@ -27,9 +27,17 @@ const RUB = new Intl.NumberFormat("ru-RU", {
 const MAX_PRICE = 50000;
 const RENDER_CAP = 200;
 
-/** Client feed: fixed price slider + home/transit hub chips + date range. */
-export function DealFeed({ items }: { items: FeedCard[] }) {
-  const [limit, setLimit] = useState(MAX_PRICE);
+/** Client feed: price slider (+ optional home/transit hub chips for the discovery feed). */
+export function DealFeed({
+  items,
+  showHubFilters = true,
+  priceCap = MAX_PRICE,
+}: {
+  items: FeedCard[];
+  showHubFilters?: boolean;
+  priceCap?: number;
+}) {
+  const [limit, setLimit] = useState(priceCap);
   const [hubs, setHubs] = useState<string[]>([]);
 
   const toggleHub = (code: string) =>
@@ -41,7 +49,7 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
       (hubs.length === 0 || hubs.includes(i.origin) || hubs.includes(i.destination)),
   );
   const visible = shown.slice(0, RENDER_CAP);
-  const fill = (limit / MAX_PRICE) * 100;
+  const fill = (limit / priceCap) * 100;
 
   const chip = (h: { code: string; label: string }) => {
     const active = hubs.includes(h.code);
@@ -76,7 +84,7 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
         <input
           type="range"
           min={0}
-          max={MAX_PRICE}
+          max={priceCap}
           step={500}
           value={limit}
           onChange={(e) => setLimit(Number(e.target.value))}
@@ -85,16 +93,22 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
           aria-label="Максимальная цена"
         />
 
-        <p className="kicker mt-5">Ваши города — вылет или прилёт</p>
-        <div className="mt-2 flex flex-wrap gap-2">{HOME_HUBS.map(chip)}</div>
+        {showHubFilters && (
+          <>
+            <p className="kicker mt-5">Ваши города — вылет или прилёт</p>
+            <div className="mt-2 flex flex-wrap gap-2">{HOME_HUBS.map(chip)}</div>
 
-        <p className="kicker mt-3">Транзитные хабы</p>
-        <div className="mt-2 flex flex-wrap gap-2">{TRANSIT_HUBS.map(chip)}</div>
+            <p className="kicker mt-3">Транзитные хабы</p>
+            <div className="mt-2 flex flex-wrap gap-2">{TRANSIT_HUBS.map(chip)}</div>
+          </>
+        )}
       </div>
 
       {shown.length === 0 ? (
         <p className="mt-8 text-center text-muted">
-          Ничего под эти фильтры. Поднимите цену или снимите города.
+          {showHubFilters
+            ? "Ничего под эти фильтры. Поднимите цену или снимите города."
+            : "Ничего дешевле этой цены. Поднимите ползунок."}
         </p>
       ) : (
         <>

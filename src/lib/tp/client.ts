@@ -28,6 +28,22 @@ export type PricesCheapParams = {
   departDate: string;
 };
 
+export type PricesCalendarParams = {
+  origin: string;
+  destination: string;
+  /** Month to scan, "YYYY-MM-01". */
+  month: string;
+};
+
+/** One day in the /v1/prices/calendar response (keyed by departure date). */
+type TpCalendarEntry = {
+  value: number; // price in requested currency
+  depart_date?: string;
+  return_date?: string | null;
+  airline?: string | null;
+  number_of_changes?: number;
+};
+
 /** One entry inside the nested /v1/prices/cheap response. */
 type TpCheapEntry = {
   price: number;
@@ -94,6 +110,45 @@ export async function pricesCheap({
         number_of_changes: entry.number_of_changes ?? 0,
       });
     }
+  }
+  return out;
+}
+
+/**
+ * Cheapest fare per departure day across a month for one exact route.
+ * Used by the "I know where I want to go" route search — a calendar of dates,
+ * unlike prices/latest which returns a single cheapest fare per route.
+ */
+export async function pricesCalendar({
+  origin,
+  destination,
+  month,
+}: PricesCalendarParams): Promise<TpLatestPrice[]> {
+  const url = new URL(`${TP_BASE}/v1/prices/calendar`);
+  url.searchParams.set("origin", origin);
+  url.searchParams.set("destination", destination);
+  url.searchParams.set("depart_date", month);
+  url.searchParams.set("calendar_type", "departure_date");
+  url.searchParams.set("currency", "rub");
+  url.searchParams.set("one_way", "true");
+  url.searchParams.set("token", tpToken());
+
+  const json = await fetchJson<{ success: boolean; data?: Record<string, TpCalendarEntry> }>(
+    url.toString(),
+  );
+
+  const out: TpLatestPrice[] = [];
+  for (const [date, e] of Object.entries(json.data ?? {})) {
+    if (!e?.value) continue;
+    out.push({
+      origin,
+      destination,
+      depart_date: (e.depart_date ?? date).slice(0, 10),
+      return_date: e.return_date || null,
+      value: e.value,
+      airline: e.airline ?? null,
+      number_of_changes: e.number_of_changes ?? 0,
+    });
   }
   return out;
 }

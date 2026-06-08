@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { CityAutocomplete } from "@/components/city-autocomplete";
-import { DealCard } from "@/components/deal-card";
 import { DealFeed, type FeedCard } from "@/components/deal-feed";
 import { cityName } from "@/data/airports";
 import { ALL_HUB_CODES, ORIGIN_OPTIONS, POPULAR_DESTINATIONS } from "@/data/hubs";
+import { buildAviasalesLink } from "@/lib/affiliate";
 import { formatDate } from "@/lib/format";
+import { dealId } from "@/lib/jobs/shared";
 import { createClient } from "@/lib/supabase/server";
+import { pricesCalendar, type TpLatestPrice } from "@/lib/tp/client";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,21 @@ type DealRowDb = {
 
 const inputCls =
   "rounded-lg border border-line bg-paper px-3 py-2 font-mono text-sm text-ink outline-none focus:border-accent";
+
+/** ["2026-06-01", "2026-07-01", ...] — `count` month-starts beginning with `fromIso`'s month. */
+function monthStarts(fromIso: string, count: number): string[] {
+  const [y, m] = fromIso.split("-").map(Number);
+  return Array.from({ length: count }, (_, i) =>
+    new Date(Date.UTC(y, m - 1 + i, 1)).toISOString().slice(0, 10),
+  );
+}
+
+/** Inclusive count of calendar months spanned by [fromIso, toIso]. */
+function monthSpan(fromIso: string, toIso: string): number {
+  const [fy, fm] = fromIso.split("-").map(Number);
+  const [ty, tm] = toIso.split("-").map(Number);
+  return (ty - fy) * 12 + (tm - fm) + 1;
+}
 
 function toCard(d: DealRowDb, prefix: string): FeedCard {
   return {
@@ -83,18 +100,65 @@ export default async function HomePage({
     const origin = sp.origin || "";
     const dest = sp.dest || "";
     let routeItems: FeedCard[] = [];
+    let routeError = false;
     if (origin && dest) {
-      let q = supabase
-        .from("deals")
-        .select(DEAL_COLS)
-        .eq("is_active", true)
-        .eq("origin_iata", origin)
-        .eq("destination_iata", dest)
-        .gte("depart_date", from);
-      if (to) q = q.lte("depart_date", to);
-      const res = await q.order("price_rub", { ascending: true }).limit(60);
-      routeItems = ((res.data ?? []) as DealRowDb[]).map((d) => toCard(d, "route"));
+      // prices/latest only stores one cheapest fare per route, so for a specific
+      // route we fetch a calendar of dates live from TP (cheapest per day per month).
+      const span = to ? Math.min(6, Math.max(1, monthSpan(from, to))) : 3;
+      const marker = process.env.TP_PARTNER_MARKER ?? "";
+      try {
+        const settled = await Promise.allSettled(
+          monthStarts(from, span).map((month) =>
+            pricesCalendar({ origin, destination: dest, month }),
+          ),
+        );
+        if (settled.every((s) => s.status === "rejected")) routeError = true;
+
+        const best = new Map<string, TpLatestPrice>();
+        for (const s of settled) {
+          if (s.status !== "fulfilled") continue;
+          for (const p of s.value) {
+            if (!p.depart_date || p.depart_date < from) continue;
+            if (to && p.depart_date > to) continue;
+            const cur = best.get(p.depart_date);
+            if (!cur || p.value < cur.value) best.set(p.depart_date, p);
+          }
+        }
+        routeItems = [...best.values()]
+          .sort((a, b) => a.value - b.value)
+          .map((p) => {
+            const id = dealId(origin, p);
+            return {
+              key: `route-${id}`,
+              origin,
+              destination: dest,
+              route: `${cityName(origin)} → ${cityName(dest)}`,
+              routeTitle: `${origin} → ${dest}`,
+              dateLabel: formatDate(p.depart_date),
+              priceRub: p.value,
+              airline: p.airline,
+              transfers: p.number_of_changes,
+              deepLink: buildAviasalesLink({
+                origin,
+                destination: dest,
+                departDate: p.depart_date,
+                returnDate: null,
+                marker,
+                dealKind: "l2",
+                dealId: id,
+              }),
+            } satisfies FeedCard;
+          });
+      } catch {
+        routeError = true;
+      }
     }
+    const routeCap = routeItems.length
+      ? Math.min(
+          50000,
+          Math.max(5000, Math.ceil(Math.max(...routeItems.map((i) => i.priceRub)) / 1000) * 1000),
+        )
+      : 50000;
 
     return (
       <main className="mx-auto max-w-3xl px-6 py-10">
@@ -149,27 +213,17 @@ export default async function HomePage({
 
         {!origin || !dest ? (
           <p className="mt-10 text-muted">Выберите города отправления и прибытия.</p>
+        ) : routeError ? (
+          <p className="mt-10 text-muted">
+            Не удалось получить цены по маршруту. Попробуйте ещё раз через минуту.
+          </p>
         ) : routeItems.length === 0 ? (
           <p className="mt-10 text-muted">
             По маршруту {cityName(origin)} → {cityName(dest)} пока нет находок. Попробуйте другие
             даты или режим «Я хоть куда».
           </p>
         ) : (
-          <div className="mt-6 space-y-3">
-            {routeItems.map((item) => (
-              <DealCard
-                key={item.key}
-                route={item.route}
-                routeTitle={item.routeTitle}
-                dateLabel={item.dateLabel}
-                priceRub={item.priceRub}
-                airline={item.airline}
-                transfers={item.transfers}
-                deepLink={item.deepLink}
-                badge={item.badge}
-              />
-            ))}
-          </div>
+          <DealFeed items={routeItems} showHubFilters={false} priceCap={routeCap} />
         )}
       </main>
     );
