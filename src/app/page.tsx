@@ -7,7 +7,7 @@ import { buildAviasalesLink } from "@/lib/affiliate";
 import { formatDate } from "@/lib/format";
 import { dealId } from "@/lib/jobs/shared";
 import { createClient } from "@/lib/supabase/server";
-import { pricesCalendar, pricesCalendarRaw, type TpLatestPrice } from "@/lib/tp/client";
+import { pricesCalendar, type TpLatestPrice } from "@/lib/tp/client";
 
 export const dynamic = "force-dynamic";
 
@@ -86,7 +86,6 @@ export default async function HomePage({
     to?: string;
     origin?: string;
     dest?: string;
-    debug?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -130,6 +129,9 @@ export default async function HomePage({
       }
 
       const span = to ? Math.min(6, Math.max(1, monthSpan(from, to))) : 3;
+      // The calendar can return ~a year of dates; without an explicit "По" cap the
+      // default view to the span window (first day after the last month in range).
+      const upperExclusive = to ? null : monthStarts(from, span + 1)[span];
       const settled = await Promise.allSettled(
         monthStarts(from, span).map((month) =>
           pricesCalendar({ origin, destination: dest, month }),
@@ -142,7 +144,7 @@ export default async function HomePage({
       const best = new Map<string, TpLatestPrice>();
       for (const p of candidates) {
         if (!p.depart_date || p.depart_date < from) continue;
-        if (to && p.depart_date > to) continue;
+        if (to ? p.depart_date > to : upperExclusive && p.depart_date >= upperExclusive) continue;
         const cur = best.get(p.depart_date);
         if (!cur || p.value < cur.value) best.set(p.depart_date, p);
       }
@@ -178,21 +180,6 @@ export default async function HomePage({
           Math.max(5000, Math.ceil(Math.max(...routeItems.map((i) => i.priceRub)) / 1000) * 1000),
         )
       : 50000;
-
-    // TEMP: ?debug=1 dumps the raw TP calendar response to diagnose empty routes.
-    let debugDump = "";
-    if (sp.debug === "1" && origin && dest) {
-      try {
-        const raw = await pricesCalendarRaw({
-          origin,
-          destination: dest,
-          month: monthStarts(from, 1)[0],
-        });
-        debugDump = `month=${monthStarts(from, 1)[0].slice(0, 7)} items=${routeItems.length}\n${JSON.stringify(raw, null, 2)}`;
-      } catch (e) {
-        debugDump = `ERROR: ${e instanceof Error ? e.message : String(e)}`;
-      }
-    }
 
     return (
       <main className="mx-auto max-w-3xl px-6 py-10">
@@ -244,12 +231,6 @@ export default async function HomePage({
             Найти
           </button>
         </form>
-
-        {debugDump && (
-          <pre className="mt-6 max-h-96 overflow-auto rounded-lg border border-line bg-card p-3 text-[0.7rem] text-ink">
-            {debugDump}
-          </pre>
-        )}
 
         {!origin || !dest ? (
           <p className="mt-10 text-muted">Выберите города отправления и прибытия.</p>
