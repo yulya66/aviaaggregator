@@ -1,20 +1,9 @@
-import { DealCard } from "@/components/deal-card";
+import { DealFeed, type FeedCard } from "@/components/deal-feed";
+import { cityName } from "@/data/airports";
+import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-
-type FeedItem = {
-  key: string;
-  origin: string;
-  destination: string;
-  departDate: string;
-  priceRub: number;
-  airline: string | null;
-  transfers: number;
-  deepLink: string;
-  badge?: string;
-  sortAt: string;
-};
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -27,7 +16,7 @@ export default async function HomePage() {
       )
       .eq("is_active", true)
       .order("last_seen_at", { ascending: false })
-      .limit(50),
+      .limit(100),
     supabase
       .from("anomalies")
       .select(
@@ -47,60 +36,52 @@ export default async function HomePage() {
     );
   }
 
-  const items: FeedItem[] = [
+  const raw = [
     ...(dealsRes.data ?? []).map((d) => ({
-      key: `deal-${d.id}`,
-      origin: d.origin_iata,
-      destination: d.destination_iata,
-      departDate: d.depart_date,
-      priceRub: d.price_rub,
-      airline: d.airline,
-      transfers: d.transfers,
-      deepLink: d.deep_link,
-      sortAt: d.last_seen_at,
+      sortAt: d.last_seen_at as string,
+      card: {
+        key: `deal-${d.id}`,
+        route: `${cityName(d.origin_iata)} → ${cityName(d.destination_iata)}`,
+        routeTitle: `${d.origin_iata} → ${d.destination_iata}`,
+        dateLabel: formatDate(d.depart_date),
+        priceRub: d.price_rub as number,
+        airline: d.airline as string | null,
+        transfers: d.transfers as number,
+        deepLink: d.deep_link as string,
+      } satisfies FeedCard,
     })),
     ...(anomaliesRes.data ?? []).map((a) => ({
-      key: `anomaly-${a.id}`,
-      origin: a.origin_iata,
-      destination: a.destination_iata,
-      departDate: a.depart_date,
-      priceRub: a.price_rub,
-      airline: a.airline,
-      transfers: a.transfers,
-      deepLink: a.deep_link,
-      badge: `−${Math.round(Number(a.discount_pct))}%`,
-      sortAt: a.detected_at,
+      sortAt: a.detected_at as string,
+      card: {
+        key: `anomaly-${a.id}`,
+        route: `${cityName(a.origin_iata)} → ${cityName(a.destination_iata)}`,
+        routeTitle: `${a.origin_iata} → ${a.destination_iata}`,
+        dateLabel: formatDate(a.depart_date),
+        priceRub: a.price_rub as number,
+        airline: a.airline as string | null,
+        transfers: a.transfers as number,
+        deepLink: a.deep_link as string,
+        badge: `−${Math.round(Number(a.discount_pct))}%`,
+      } satisfies FeedCard,
     })),
-  ].sort((x, y) => (x.sortAt < y.sortAt ? 1 : -1));
+  ];
+
+  raw.sort((x, y) => (x.sortAt < y.sortAt ? 1 : -1));
+  const items: FeedCard[] = raw.map((r) => r.card);
 
   return (
     <main className="mx-auto max-w-3xl p-8">
       <h1 className="text-2xl font-bold">Лента дешёвых рейсов</h1>
       <p className="mt-2 text-gray-600">
-        L2 (родные хабы) + L3 (аномалии). Обновляется по расписанию.
+        Все хабы (родные + транзитные). Подвиньте ползунок, чтобы отфильтровать по цене.
       </p>
 
       {items.length === 0 ? (
         <p className="mt-8 text-gray-600">
-          Пока пусто. После первых прогонов cron здесь появятся предложения (L3 копит данные ~14
-          дней до первых аномалий).
+          Пока пусто. После первых прогонов cron здесь появятся предложения.
         </p>
       ) : (
-        <div className="mt-6 space-y-3">
-          {items.map((item) => (
-            <DealCard
-              key={item.key}
-              origin={item.origin}
-              destination={item.destination}
-              departDate={item.departDate}
-              priceRub={item.priceRub}
-              airline={item.airline}
-              transfers={item.transfers}
-              deepLink={item.deepLink}
-              badge={item.badge}
-            />
-          ))}
-        </div>
+        <DealFeed items={items} />
       )}
     </main>
   );

@@ -1,10 +1,7 @@
-import { cityName } from "@/data/airports";
-import { formatDate } from "@/lib/format";
-
 type DealCardProps = {
-  origin: string;
-  destination: string;
-  departDate: string;
+  route: string; // "Екатеринбург → Сочи" (pre-translated server-side)
+  routeTitle?: string; // "SVX → AER" (IATA, shown on hover)
+  dateLabel: string; // "12.09.2026"
   priceRub: number;
   airline: string | null;
   transfers: number;
@@ -19,9 +16,9 @@ const RUB = new Intl.NumberFormat("ru-RU", {
 });
 
 export function DealCard({
-  origin,
-  destination,
-  departDate,
+  route,
+  routeTitle,
+  dateLabel,
   priceRub,
   airline,
   transfers,
@@ -32,8 +29,8 @@ export function DealCard({
     <article className="flex items-center justify-between rounded-lg border border-gray-200 p-4">
       <div>
         <div className="flex items-center gap-2">
-          <span className="font-semibold" title={`${origin} → ${destination}`}>
-            {cityName(origin)} → {cityName(destination)}
+          <span className="font-semibold" title={routeTitle}>
+            {route}
           </span>
           {badge && (
             <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
@@ -42,7 +39,7 @@ export function DealCard({
           )}
         </div>
         <p className="mt-1 text-sm text-gray-600">
-          {formatDate(departDate)} · {transfers === 0 ? "прямой" : `пересадок: ${transfers}`}
+          {dateLabel} · {transfers === 0 ? "прямой" : `пересадок: ${transfers}`}
           {airline ? ` · ${airline}` : ""}
         </p>
       </div>

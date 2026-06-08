@@ -1,4 +1,6 @@
 import { DealCard } from "@/components/deal-card";
+import { cityName } from "@/data/airports";
+import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -42,9 +44,9 @@ export default async function AnomaliesPage() {
             return (
               <div key={a.id} className={discount >= 50 ? "rounded-lg ring-2 ring-red-400" : ""}>
                 <DealCard
-                  origin={a.origin_iata}
-                  destination={a.destination_iata}
-                  departDate={a.depart_date}
+                  route={`${cityName(a.origin_iata)} → ${cityName(a.destination_iata)}`}
+                  routeTitle={`${a.origin_iata} → ${a.destination_iata}`}
+                  dateLabel={formatDate(a.depart_date)}
                   priceRub={a.price_rub}
                   airline={a.airline}
                   transfers={a.transfers}

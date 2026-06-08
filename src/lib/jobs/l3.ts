@@ -2,7 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildAviasalesLink } from "@/lib/affiliate";
 import { evaluateAnomaly } from "@/lib/anomaly";
 import type { TpClient } from "@/lib/tp/client";
-import { anomalyId, dedupeCheapest, type SnapshotRow, toSnapshot } from "./shared";
+import {
+  anomalyId,
+  type DealRow,
+  dedupeCheapest,
+  type SnapshotRow,
+  toDeal,
+  toSnapshot,
+} from "./shared";
 
 // L3 scans these hubs for price anomalies, one per hour (round-robin).
 // Home hubs (SVX/MOW/LED) + transit/third-country hubs.
@@ -10,6 +17,8 @@ export const TRANSIT_HUBS = [
   "SVX",
   "MOW",
   "LED",
+  "CEK",
+  "PEE",
   "EVN",
   "TBS",
   "IST",
@@ -49,10 +58,19 @@ export async function runPollL3(
   const nowIso = new Date().toISOString();
 
   const results = await tp.pricesLatest({ origin: hub, limit: 300 });
-  const snapshots: SnapshotRow[] = dedupeCheapest(results).map((p) => toSnapshot(hub, p));
+  const cheapest = dedupeCheapest(results);
+  const snapshots: SnapshotRow[] = cheapest.map((p) => toSnapshot(hub, p));
+  const deals: DealRow[] = cheapest.map((p) => toDeal(hub, p, marker, nowIso));
   if (snapshots.length > 0) {
     const { error } = await supabase.rpc("record_snapshots", { p_rows: snapshots });
     if (error) throw new Error(`record_snapshots failed: ${JSON.stringify(error)}`);
+  }
+  // Surface every hub's fares in the shared feed (no extra API calls — same fetched data).
+  if (deals.length > 0) {
+    const { error: dealErr } = await supabase
+      .from("deals")
+      .upsert(deals, { onConflict: "origin_iata,destination_iata,depart_date" });
+    if (dealErr) throw new Error(`deals upsert failed: ${JSON.stringify(dealErr)}`);
   }
 
   const { data, error } = await supabase.rpc("anomaly_candidates", { p_origin: hub });

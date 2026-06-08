@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
 import type { TpClient, TpLatestPrice } from "@/lib/tp/client";
-import { runPollL2 } from "./l2";
+import { HOME_HUBS, runPollL2 } from "./l2";
 
 function price(partial: Partial<TpLatestPrice>): TpLatestPrice {
   return {
@@ -35,8 +35,8 @@ describe("runPollL2", () => {
 
     const result = await runPollL2(db, tp, "555");
 
-    expect(tp.pricesLatest).toHaveBeenCalledTimes(3); // EKB, MOW, LED
-    expect(result.api_calls).toBe(3);
+    expect(tp.pricesLatest).toHaveBeenCalledTimes(HOME_HUBS.length); // one call per home hub
+    expect(result.api_calls).toBe(HOME_HUBS.length);
     expect(rpc).toHaveBeenCalledWith(
       "record_snapshots",
       expect.objectContaining({ p_rows: expect.any(Array) }),

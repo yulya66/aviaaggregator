@@ -2,8 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TpClient } from "@/lib/tp/client";
 import { type DealRow, dedupeCheapest, type SnapshotRow, toDeal, toSnapshot } from "./shared";
 
-// SVX = Екатеринбург (Кольцово). NB: "EKB" is Ekibastuz, KZ — do not use it for Yekaterinburg.
-export const HOME_HUBS = ["SVX", "MOW", "LED"] as const;
+// Home hubs. SVX = Екатеринбург (Кольцово) — NB: "EKB" is Ekibastuz, KZ.
+// CEK = Челябинск, PEE = Пермь.
+export const HOME_HUBS = ["SVX", "MOW", "LED", "CEK", "PEE"] as const;
 
 export type JobResult = { api_calls: number; rows_inserted: number };
 
