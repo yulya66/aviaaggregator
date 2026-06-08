@@ -16,7 +16,7 @@ export default async function HomePage() {
       )
       .eq("is_active", true)
       .order("price_rub", { ascending: true })
-      .limit(120),
+      .limit(400),
     supabase
       .from("anomalies")
       .select(
