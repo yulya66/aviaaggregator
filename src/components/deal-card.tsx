@@ -30,10 +30,7 @@ export function DealCard({
       {/* Route + meta */}
       <div className="min-w-0 flex-1 p-5">
         <div className="flex flex-wrap items-center gap-2">
-          <h3
-            className="truncate font-display text-base font-bold tracking-tight"
-            title={routeTitle}
-          >
+          <h3 className="font-display text-base font-bold tracking-tight" title={routeTitle}>
             {route}
           </h3>
           {badge && (
