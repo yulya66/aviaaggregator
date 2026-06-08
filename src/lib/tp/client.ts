@@ -37,8 +37,10 @@ export type PricesCalendarParams = {
 
 /** One day in the /v1/prices/calendar response (keyed by departure date). */
 type TpCalendarEntry = {
-  value: number; // price in requested currency
+  value?: number; // price (v1 calendar uses `value`)
+  price?: number; // …but some responses use `price` — accept both
   depart_date?: string;
+  departure_at?: string;
   return_date?: string | null;
   airline?: string | null;
   number_of_changes?: number;
@@ -127,10 +129,9 @@ export async function pricesCalendar({
   const url = new URL(`${TP_BASE}/v1/prices/calendar`);
   url.searchParams.set("origin", origin);
   url.searchParams.set("destination", destination);
-  url.searchParams.set("depart_date", month);
+  url.searchParams.set("depart_date", month.slice(0, 7)); // "YYYY-MM"
   url.searchParams.set("calendar_type", "departure_date");
   url.searchParams.set("currency", "rub");
-  url.searchParams.set("one_way", "true");
   url.searchParams.set("token", tpToken());
 
   const json = await fetchJson<{ success: boolean; data?: Record<string, TpCalendarEntry> }>(
@@ -139,18 +140,35 @@ export async function pricesCalendar({
 
   const out: TpLatestPrice[] = [];
   for (const [date, e] of Object.entries(json.data ?? {})) {
-    if (!e?.value) continue;
+    const price = e?.value ?? e?.price;
+    if (!price) continue;
     out.push({
       origin,
       destination,
-      depart_date: (e.depart_date ?? date).slice(0, 10),
+      depart_date: (e.depart_date ?? e.departure_at ?? date).slice(0, 10),
       return_date: e.return_date || null,
-      value: e.value,
+      value: price,
       airline: e.airline ?? null,
       number_of_changes: e.number_of_changes ?? 0,
     });
   }
   return out;
+}
+
+/** TEMP DEBUG: raw /v1/prices/calendar JSON for one route+month (token kept server-side). */
+export async function pricesCalendarRaw({
+  origin,
+  destination,
+  month,
+}: PricesCalendarParams): Promise<unknown> {
+  const url = new URL(`${TP_BASE}/v1/prices/calendar`);
+  url.searchParams.set("origin", origin);
+  url.searchParams.set("destination", destination);
+  url.searchParams.set("depart_date", month.slice(0, 7));
+  url.searchParams.set("calendar_type", "departure_date");
+  url.searchParams.set("currency", "rub");
+  url.searchParams.set("token", tpToken());
+  return fetchJson<unknown>(url.toString());
 }
 
 /** Injectable interfaces so job runners can be unit-tested without network. */

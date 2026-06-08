@@ -7,7 +7,7 @@ import { buildAviasalesLink } from "@/lib/affiliate";
 import { formatDate } from "@/lib/format";
 import { dealId } from "@/lib/jobs/shared";
 import { createClient } from "@/lib/supabase/server";
-import { pricesCalendar, type TpLatestPrice } from "@/lib/tp/client";
+import { pricesCalendar, pricesCalendarRaw, type TpLatestPrice } from "@/lib/tp/client";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +86,7 @@ export default async function HomePage({
     to?: string;
     origin?: string;
     dest?: string;
+    debug?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -100,58 +101,76 @@ export default async function HomePage({
     const origin = sp.origin || "";
     const dest = sp.dest || "";
     let routeItems: FeedCard[] = [];
-    let routeError = false;
     if (origin && dest) {
-      // prices/latest only stores one cheapest fare per route, so for a specific
-      // route we fetch a calendar of dates live from TP (cheapest per day per month).
-      const span = to ? Math.min(6, Math.max(1, monthSpan(from, to))) : 3;
+      // prices/latest stores only one cheapest fare per route, so for a specific route we
+      // pull a live calendar of dates from TP (cheapest per day) AND merge in whatever the
+      // feed already cached for this route — so the tab is never empty when data exists.
       const marker = process.env.TP_PARTNER_MARKER ?? "";
-      try {
-        const settled = await Promise.allSettled(
-          monthStarts(from, span).map((month) =>
-            pricesCalendar({ origin, destination: dest, month }),
-          ),
-        );
-        if (settled.every((s) => s.status === "rejected")) routeError = true;
+      const candidates: TpLatestPrice[] = [];
 
-        const best = new Map<string, TpLatestPrice>();
-        for (const s of settled) {
-          if (s.status !== "fulfilled") continue;
-          for (const p of s.value) {
-            if (!p.depart_date || p.depart_date < from) continue;
-            if (to && p.depart_date > to) continue;
-            const cur = best.get(p.depart_date);
-            if (!cur || p.value < cur.value) best.set(p.depart_date, p);
-          }
-        }
-        routeItems = [...best.values()]
-          .sort((a, b) => a.value - b.value)
-          .map((p) => {
-            const id = dealId(origin, p);
-            return {
-              key: `route-${id}`,
+      let q = supabase
+        .from("deals")
+        .select(DEAL_COLS)
+        .eq("is_active", true)
+        .eq("origin_iata", origin)
+        .eq("destination_iata", dest)
+        .gte("depart_date", from);
+      if (to) q = q.lte("depart_date", to);
+      const dbRes = await q.limit(200);
+      for (const d of (dbRes.data ?? []) as DealRowDb[]) {
+        candidates.push({
+          origin,
+          destination: dest,
+          depart_date: d.depart_date,
+          return_date: null,
+          value: d.price_rub,
+          airline: d.airline,
+          number_of_changes: d.transfers,
+        });
+      }
+
+      const span = to ? Math.min(6, Math.max(1, monthSpan(from, to))) : 3;
+      const settled = await Promise.allSettled(
+        monthStarts(from, span).map((month) =>
+          pricesCalendar({ origin, destination: dest, month }),
+        ),
+      );
+      for (const s of settled) {
+        if (s.status === "fulfilled") candidates.push(...s.value);
+      }
+
+      const best = new Map<string, TpLatestPrice>();
+      for (const p of candidates) {
+        if (!p.depart_date || p.depart_date < from) continue;
+        if (to && p.depart_date > to) continue;
+        const cur = best.get(p.depart_date);
+        if (!cur || p.value < cur.value) best.set(p.depart_date, p);
+      }
+      routeItems = [...best.values()]
+        .sort((a, b) => a.value - b.value)
+        .map((p) => {
+          const id = dealId(origin, p);
+          return {
+            key: `route-${id}`,
+            origin,
+            destination: dest,
+            route: `${cityName(origin)} → ${cityName(dest)}`,
+            routeTitle: `${origin} → ${dest}`,
+            dateLabel: formatDate(p.depart_date),
+            priceRub: p.value,
+            airline: p.airline,
+            transfers: p.number_of_changes,
+            deepLink: buildAviasalesLink({
               origin,
               destination: dest,
-              route: `${cityName(origin)} → ${cityName(dest)}`,
-              routeTitle: `${origin} → ${dest}`,
-              dateLabel: formatDate(p.depart_date),
-              priceRub: p.value,
-              airline: p.airline,
-              transfers: p.number_of_changes,
-              deepLink: buildAviasalesLink({
-                origin,
-                destination: dest,
-                departDate: p.depart_date,
-                returnDate: null,
-                marker,
-                dealKind: "l2",
-                dealId: id,
-              }),
-            } satisfies FeedCard;
-          });
-      } catch {
-        routeError = true;
-      }
+              departDate: p.depart_date,
+              returnDate: null,
+              marker,
+              dealKind: "l2",
+              dealId: id,
+            }),
+          } satisfies FeedCard;
+        });
     }
     const routeCap = routeItems.length
       ? Math.min(
@@ -159,6 +178,21 @@ export default async function HomePage({
           Math.max(5000, Math.ceil(Math.max(...routeItems.map((i) => i.priceRub)) / 1000) * 1000),
         )
       : 50000;
+
+    // TEMP: ?debug=1 dumps the raw TP calendar response to diagnose empty routes.
+    let debugDump = "";
+    if (sp.debug === "1" && origin && dest) {
+      try {
+        const raw = await pricesCalendarRaw({
+          origin,
+          destination: dest,
+          month: monthStarts(from, 1)[0],
+        });
+        debugDump = `month=${monthStarts(from, 1)[0].slice(0, 7)} items=${routeItems.length}\n${JSON.stringify(raw, null, 2)}`;
+      } catch (e) {
+        debugDump = `ERROR: ${e instanceof Error ? e.message : String(e)}`;
+      }
+    }
 
     return (
       <main className="mx-auto max-w-3xl px-6 py-10">
@@ -211,12 +245,14 @@ export default async function HomePage({
           </button>
         </form>
 
+        {debugDump && (
+          <pre className="mt-6 max-h-96 overflow-auto rounded-lg border border-line bg-card p-3 text-[0.7rem] text-ink">
+            {debugDump}
+          </pre>
+        )}
+
         {!origin || !dest ? (
           <p className="mt-10 text-muted">Выберите города отправления и прибытия.</p>
-        ) : routeError ? (
-          <p className="mt-10 text-muted">
-            Не удалось получить цены по маршруту. Попробуйте ещё раз через минуту.
-          </p>
         ) : routeItems.length === 0 ? (
           <p className="mt-10 text-muted">
             По маршруту {cityName(origin)} → {cityName(dest)} пока нет находок. Попробуйте другие
