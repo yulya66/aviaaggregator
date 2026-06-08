@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isAdminEmail } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -61,7 +62,13 @@ export default async function AdminPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
-      <p className="kicker">Только для администратора</p>
+      <Link
+        href="/"
+        className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-accent transition hover:opacity-70"
+      >
+        ← На сайт · Лента
+      </Link>
+      <p className="kicker mt-5">Только для администратора</p>
       <h1 className="mt-2 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
         Админка
       </h1>

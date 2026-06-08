@@ -22,7 +22,7 @@ export async function Nav() {
         </Link>
 
         <div className="flex items-center gap-4 font-mono text-[0.68rem] uppercase tracking-[0.18em] sm:gap-5">
-          <Link href="/" className="hidden transition hover:text-accent sm:inline">
+          <Link href="/" className="transition hover:text-accent">
             Лента
           </Link>
           <Link href="/anomalies" className="transition hover:text-accent">
