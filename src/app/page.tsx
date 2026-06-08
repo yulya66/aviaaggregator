@@ -65,6 +65,7 @@ export default async function HomePage() {
     key: `${prefix}-${d.id}`,
     origin: d.origin_iata,
     destination: d.destination_iata,
+    departDate: d.depart_date,
     route: `${cityName(d.origin_iata)} → ${cityName(d.destination_iata)}`,
     routeTitle: `${d.origin_iata} → ${d.destination_iata}`,
     dateLabel: formatDate(d.depart_date),
