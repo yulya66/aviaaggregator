@@ -77,7 +77,7 @@ export default async function HomePage() {
       </h1>
       <p className="mt-3 max-w-md text-sm text-muted">
         Самые низкие цены из ваших городов и транзитных узлов в одной ленте. Двигайте ползунок,
-        чтобы отсечь всё дороже нужного.
+        чтобы найти самое горячее предложение.
       </p>
 
       {items.length === 0 ? (
