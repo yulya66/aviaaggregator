@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
-import { runPollL1 } from "@/lib/jobs/l1";
-import { runPollL2 } from "@/lib/jobs/l2";
-import { runPollL3 } from "@/lib/jobs/l3";
-import { createServiceRoleClient } from "@/lib/supabase/server";
-import { tpClient } from "@/lib/tp/client";
+import { isRunnableJob, runJob } from "@/lib/jobs/run";
 
 export const dynamic = "force-dynamic";
 
@@ -37,40 +33,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ job
     return NextResponse.json({ error: "unknown_job", job }, { status: 404 });
   }
 
-  if (job === "poll_l1" || job === "poll_l2" || job === "poll_l3") {
-    const supabase = createServiceRoleClient();
-    const marker = process.env.TP_PARTNER_MARKER ?? "";
-    const startedAt = new Date().toISOString();
+  if (isRunnableJob(job)) {
+    // Round-robin advances every 20 min (one slot per scheduled run); ?hour=N forces a hub.
+    const hourParam = new URL(request.url).searchParams.get("hour");
+    const opts = job === "poll_l3" && hourParam !== null ? { slot: Number(hourParam) } : undefined;
     try {
-      let result: { api_calls: number; rows_inserted: number };
-      if (job === "poll_l1") {
-        result = await runPollL1(supabase, tpClient, marker);
-      } else if (job === "poll_l2") {
-        result = await runPollL2(supabase, tpClient, marker);
-      } else {
-        // Round-robin advances every 20 min (one slot per scheduled run); ?hour=N forces a hub.
-        const hourParam = new URL(request.url).searchParams.get("hour");
-        const slot =
-          hourParam !== null ? Number(hourParam) : Math.floor(Date.now() / (20 * 60 * 1000));
-        result = await runPollL3(supabase, tpClient, marker, slot);
-      }
-
-      await supabase.from("cron_runs").insert({
-        job,
-        started_at: startedAt,
-        finished_at: new Date().toISOString(),
-        api_calls: result.api_calls,
-        rows_inserted: result.rows_inserted,
-      });
-
+      const result = await runJob(job, opts);
       return NextResponse.json({ job, ...result }, { status: 200 });
     } catch (error) {
-      await supabase.from("cron_runs").insert({
-        job,
-        started_at: startedAt,
-        finished_at: new Date().toISOString(),
-        error: String(error),
-      });
       return NextResponse.json({ job, error: String(error) }, { status: 500 });
     }
   }

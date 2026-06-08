@@ -1,6 +1,13 @@
 import { redirect } from "next/navigation";
 import { isAdminEmail } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
+import { triggerPoll } from "./actions";
+
+const POLL_BUTTONS = [
+  { job: "poll_l2", label: "Обновить ленту · L2" },
+  { job: "poll_l3", label: "Транзит + аномалии · L3" },
+  { job: "poll_l1", label: "Сохранённые поиски · L1" },
+];
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +78,29 @@ export default async function AdminPage() {
             </p>
           </div>
         ))}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-mono text-[0.7rem] uppercase tracking-widest text-muted">
+          Ручной запуск опросов
+        </h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {POLL_BUTTONS.map((b) => (
+            <form key={b.job} action={triggerPoll}>
+              <input type="hidden" name="job" value={b.job} />
+              <button
+                type="submit"
+                className="rounded-lg border border-line bg-card px-4 py-2 font-mono text-[0.7rem] uppercase tracking-[0.16em] transition hover:border-ink hover:bg-paper"
+              >
+                {b.label}
+              </button>
+            </form>
+          ))}
+        </div>
+        <p className="mt-2 font-mono text-[0.62rem] uppercase tracking-wider text-muted">
+          Запрашивает свежие цены у Travelpayouts сейчас. L2/L3 — несколько секунд, дождитесь
+          обновления статуса ниже.
+        </p>
       </section>
 
       <section className="mt-8 rounded-card border border-line bg-card p-6">
