@@ -2,7 +2,7 @@ name: Cron — L2 deal feed
 
 on:
   schedule:
-    - cron: "30 */6 * * *"   # 4x/day, offset 30m from L1
+    - cron: "30 * * * *"   # hourly at :30 — home-hub feed
   workflow_dispatch:
 
 jobs:

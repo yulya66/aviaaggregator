@@ -48,10 +48,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ job
       } else if (job === "poll_l2") {
         result = await runPollL2(supabase, tpClient, marker);
       } else {
-        // Optional ?hour=N override lets us backfill a specific round-robin hub on demand.
+        // Round-robin advances every 20 min (one slot per scheduled run); ?hour=N forces a hub.
         const hourParam = new URL(request.url).searchParams.get("hour");
-        const hour = hourParam !== null ? Number(hourParam) : new Date().getUTCHours();
-        result = await runPollL3(supabase, tpClient, marker, hour);
+        const slot =
+          hourParam !== null ? Number(hourParam) : Math.floor(Date.now() / (20 * 60 * 1000));
+        result = await runPollL3(supabase, tpClient, marker, slot);
       }
 
       await supabase.from("cron_runs").insert({
