@@ -20,6 +20,7 @@ export const TRANSIT_HUBS = [
   "CEK",
   "PEE",
   "TJM",
+  "KUF",
   "EVN",
   "TBS",
   "IST",

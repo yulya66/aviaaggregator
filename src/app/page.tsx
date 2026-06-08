@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const HOME_HUBS = ["SVX", "MOW", "LED", "CEK", "PEE", "TJM"];
+const HOME_HUBS = ["SVX", "MOW", "LED", "CEK", "PEE", "TJM", "KUF"];
 const DEAL_COLS =
   "id, origin_iata, destination_iata, depart_date, price_rub, airline, transfers, deep_link";
 

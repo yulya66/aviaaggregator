@@ -21,8 +21,8 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Авиа-агрегатор — дешёвые рейсы и ценовые аномалии",
-  description: "Личный мониторинг дешёвых авиабилетов из Екатеринбурга, Москвы и других хабов",
+  title: "aviatop — дешёвые рейсы и ценовые аномалии",
+  description: "Дешёвые авиабилеты и ценовые аномалии из ваших городов — туда и обратно",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -37,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="flex-1">{children}</div>
         <footer className="mt-16 border-t border-line">
           <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-2 px-6 py-8 text-xs text-muted sm:flex-row">
-            <span className="font-mono uppercase tracking-widest">✈ Авиа-агрегатор</span>
+            <span className="font-mono lowercase tracking-widest">✈ aviatop</span>
             <span>Цены кэшируются — проверяйте перед покупкой.</span>
           </div>
         </footer>

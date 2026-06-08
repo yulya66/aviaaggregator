@@ -14,8 +14,8 @@ export async function Nav() {
           <span className="grid h-8 w-8 place-items-center rounded-full bg-accent text-sm text-card shadow-[0_2px_10px_rgba(229,72,43,0.4)]">
             ✈
           </span>
-          <span className="font-display text-lg font-extrabold tracking-tight">
-            Авиа<span className="text-accent">·</span>агрегатор
+          <span className="font-display text-lg font-extrabold lowercase tracking-tight">
+            avia<span className="text-accent">top</span>
           </span>
         </Link>
 

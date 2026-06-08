@@ -32,6 +32,7 @@ const HOME_HUBS = [
   { code: "CEK", label: "Челябинск" },
   { code: "PEE", label: "Пермь" },
   { code: "TJM", label: "Тюмень" },
+  { code: "KUF", label: "Самара" },
 ];
 
 /** Client feed with a fixed price slider + home-hub filter chips. */

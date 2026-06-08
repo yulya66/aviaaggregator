@@ -3,8 +3,8 @@ import type { TpClient } from "@/lib/tp/client";
 import { type DealRow, dedupeCheapest, type SnapshotRow, toDeal, toSnapshot } from "./shared";
 
 // Home hubs. SVX = Екатеринбург (Кольцово) — NB: "EKB" is Ekibastuz, KZ.
-// CEK = Челябинск, PEE = Пермь, TJM = Тюмень.
-export const HOME_HUBS = ["SVX", "MOW", "LED", "CEK", "PEE", "TJM"] as const;
+// CEK = Челябинск, PEE = Пермь, TJM = Тюмень, KUF = Самара.
+export const HOME_HUBS = ["SVX", "MOW", "LED", "CEK", "PEE", "TJM", "KUF"] as const;
 
 export type JobResult = { api_calls: number; rows_inserted: number };
 
