@@ -3,8 +3,8 @@ import type { TpClient } from "@/lib/tp/client";
 import { type DealRow, dedupeCheapest, type SnapshotRow, toDeal, toSnapshot } from "./shared";
 
 // Home hubs. SVX = Екатеринбург (Кольцово) — NB: "EKB" is Ekibastuz, KZ.
-// CEK = Челябинск, PEE = Пермь.
-export const HOME_HUBS = ["SVX", "MOW", "LED", "CEK", "PEE"] as const;
+// CEK = Челябинск, PEE = Пермь, TJM = Тюмень.
+export const HOME_HUBS = ["SVX", "MOW", "LED", "CEK", "PEE", "TJM"] as const;
 
 export type JobResult = { api_calls: number; rows_inserted: number };
 
@@ -14,9 +14,6 @@ export async function runPollL2(
   marker: string,
 ): Promise<JobResult> {
   const nowIso = new Date().toISOString();
-  const snapshots: SnapshotRow[] = [];
-  const deals: DealRow[] = [];
-
   // Outbound (FROM each home hub) + inbound (INTO each home hub, e.g. Тбилиси → Екатеринбург),
   // all in parallel to stay within the Vercel function time limit.
   const tasks = HOME_HUBS.flatMap((hub) => [
@@ -28,16 +25,26 @@ export async function runPollL2(
   const settled = await Promise.allSettled(tasks);
   const apiCalls = settled.length;
 
+  // Dedupe globally by route, keeping the cheapest. A home↔home route appears in both an
+  // outbound and an inbound result set; Postgres rejects two updates to the same row in one
+  // upsert ("ON CONFLICT DO UPDATE cannot affect row a second time"), so we collapse here.
+  const snapByRoute = new Map<string, SnapshotRow>();
+  const dealByRoute = new Map<string, DealRow>();
   for (const s of settled) {
     if (s.status !== "fulfilled") continue;
     const { inbound, hub, rows } = s.value;
     for (const p of dedupeCheapest(rows)) {
-      // Outbound: the hub is the origin. Inbound: the flight's own origin → into the hub.
       const origin = inbound ? p.origin : hub;
-      snapshots.push(toSnapshot(origin, p));
-      deals.push(toDeal(origin, p, marker, nowIso));
+      const key = `${origin}_${p.destination}_${p.depart_date}`;
+      const existing = snapByRoute.get(key);
+      if (!existing || p.value < existing.price_rub) {
+        snapByRoute.set(key, toSnapshot(origin, p));
+        dealByRoute.set(key, toDeal(origin, p, marker, nowIso));
+      }
     }
   }
+  const snapshots = [...snapByRoute.values()];
+  const deals = [...dealByRoute.values()];
 
   if (snapshots.length > 0) {
     const { error } = await supabase.rpc("record_snapshots", { p_rows: snapshots });
