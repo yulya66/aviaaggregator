@@ -5,29 +5,48 @@ import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+const HOME_HUBS = ["SVX", "MOW", "LED", "CEK", "PEE", "TJM"];
+const DEAL_COLS =
+  "id, origin_iata, destination_iata, depart_date, price_rub, airline, transfers, deep_link";
+
+type DealRowDb = {
+  id: string;
+  origin_iata: string;
+  destination_iata: string;
+  depart_date: string;
+  price_rub: number;
+  airline: string | null;
+  transfers: number;
+  deep_link: string;
+  discount_pct?: number;
+};
+
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const [dealsRes, anomaliesRes] = await Promise.all([
-    supabase
-      .from("deals")
-      .select(
-        "id, origin_iata, destination_iata, depart_date, price_rub, airline, transfers, deep_link, last_seen_at",
-      )
-      .eq("is_active", true)
-      .order("price_rub", { ascending: true })
-      .limit(400),
+  // One query per home hub (cheapest fares touching that city, either direction) so every
+  // city is represented evenly — the globally-cheapest set was dominated by one or two hubs.
+  const [hubResults, anomaliesRes] = await Promise.all([
+    Promise.all(
+      HOME_HUBS.map((hub) =>
+        supabase
+          .from("deals")
+          .select(DEAL_COLS)
+          .eq("is_active", true)
+          .or(`origin_iata.eq.${hub},destination_iata.eq.${hub}`)
+          .order("price_rub", { ascending: true })
+          .limit(120),
+      ),
+    ),
     supabase
       .from("anomalies")
-      .select(
-        "id, origin_iata, destination_iata, depart_date, price_rub, airline, transfers, deep_link, discount_pct, detected_at",
-      )
+      .select(`${DEAL_COLS}, discount_pct`)
       .eq("is_active", true)
       .order("price_rub", { ascending: true })
-      .limit(50),
+      .limit(60),
   ]);
 
-  if (dealsRes.error || anomaliesRes.error) {
+  if (hubResults.some((r) => r.error) || anomaliesRes.error) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-12">
         <h1 className="font-display text-3xl font-extrabold">Лента</h1>
@@ -36,52 +55,40 @@ export default async function HomePage() {
     );
   }
 
-  const raw = [
-    ...(dealsRes.data ?? []).map((d) => ({
-      sortAt: d.last_seen_at as string,
-      card: {
-        key: `deal-${d.id}`,
-        origin: d.origin_iata as string,
-        destination: d.destination_iata as string,
-        route: `${cityName(d.origin_iata)} → ${cityName(d.destination_iata)}`,
-        routeTitle: `${d.origin_iata} → ${d.destination_iata}`,
-        dateLabel: formatDate(d.depart_date),
-        priceRub: d.price_rub as number,
-        airline: d.airline as string | null,
-        transfers: d.transfers as number,
-        deepLink: d.deep_link as string,
-      } satisfies FeedCard,
-    })),
-    ...(anomaliesRes.data ?? []).map((a) => ({
-      sortAt: a.detected_at as string,
-      card: {
-        key: `anomaly-${a.id}`,
-        origin: a.origin_iata as string,
-        destination: a.destination_iata as string,
-        route: `${cityName(a.origin_iata)} → ${cityName(a.destination_iata)}`,
-        routeTitle: `${a.origin_iata} → ${a.destination_iata}`,
-        dateLabel: formatDate(a.depart_date),
-        priceRub: a.price_rub as number,
-        airline: a.airline as string | null,
-        transfers: a.transfers as number,
-        deepLink: a.deep_link as string,
-        badge: `−${Math.round(Number(a.discount_pct))}%`,
-      } satisfies FeedCard,
-    })),
-  ];
+  // Merge + dedupe deals by id (a home↔home route comes back under both hubs).
+  const dealsById = new Map<string, DealRowDb>();
+  for (const res of hubResults) {
+    for (const d of (res.data ?? []) as DealRowDb[]) dealsById.set(d.id, d);
+  }
 
-  raw.sort((x, y) => x.card.priceRub - y.card.priceRub);
-  const items: FeedCard[] = raw.map((r) => r.card);
+  const toCard = (d: DealRowDb, prefix: string): FeedCard => ({
+    key: `${prefix}-${d.id}`,
+    origin: d.origin_iata,
+    destination: d.destination_iata,
+    route: `${cityName(d.origin_iata)} → ${cityName(d.destination_iata)}`,
+    routeTitle: `${d.origin_iata} → ${d.destination_iata}`,
+    dateLabel: formatDate(d.depart_date),
+    priceRub: d.price_rub,
+    airline: d.airline,
+    transfers: d.transfers,
+    deepLink: d.deep_link,
+    ...(d.discount_pct != null ? { badge: `−${Math.round(Number(d.discount_pct))}%` } : {}),
+  });
+
+  const items: FeedCard[] = [
+    ...[...dealsById.values()].map((d) => toCard(d, "deal")),
+    ...((anomaliesRes.data ?? []) as DealRowDb[]).map((a) => toCard(a, "anomaly")),
+  ].sort((x, y) => x.priceRub - y.priceRub);
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
-      <p className="kicker">Родные + транзитные хабы</p>
+      <p className="kicker">Рейсы из ваших городов</p>
       <h1 className="mt-2 font-display text-4xl font-extrabold leading-[1.04] tracking-tight sm:text-5xl">
         Дешёвые рейсы
       </h1>
       <p className="mt-3 max-w-md text-sm text-muted">
-        Самые низкие цены из ваших городов и транзитных узлов в одной ленте. Двигайте ползунок,
-        чтобы найти самое горячее предложение.
+        Самые низкие цены — туда и обратно, по всем домашним хабам. Двигайте ползунок, чтобы найти
+        самое горячее предложение.
       </p>
 
       {items.length === 0 ? (

@@ -73,7 +73,8 @@ export function DealFeed({ items }: { items: FeedCard[] }) {
           aria-label="Максимальная цена"
         />
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <p className="kicker mt-5">Ваши города — вылет или прилёт</p>
+        <div className="mt-2 flex flex-wrap gap-2">
           {HOME_HUBS.map((h) => {
             const active = hubs.includes(h.code);
             return (
