@@ -52,6 +52,7 @@ function toCard(d: DealRowDb, prefix: string): FeedCard {
     route: `${cityName(d.origin_iata)} → ${cityName(d.destination_iata)}`,
     routeTitle: `${d.origin_iata} → ${d.destination_iata}`,
     dateLabel: formatDate(d.depart_date),
+    departDate: d.depart_date,
     priceRub: d.price_rub,
     airline: d.airline,
     transfers: d.transfers,
@@ -173,6 +174,7 @@ export default async function HomePage({
             route: `${cityName(p.origin)} → ${cityName(p.destination)}`,
             routeTitle: `${p.origin} → ${p.destination}`,
             dateLabel: formatDate(p.depart_date),
+            departDate: p.depart_date,
             priceRub: p.value,
             airline: p.airline,
             transfers: p.number_of_changes,
@@ -206,17 +208,17 @@ export default async function HomePage({
           className="mt-6 grid grid-cols-2 gap-3 rounded-card border border-line bg-card p-4 sm:grid-cols-4"
         >
           <input type="hidden" name="mode" value="route" />
-          <label className="col-span-1 flex flex-col gap-1 font-mono text-[0.62rem] uppercase tracking-wider text-muted">
+          <div className="col-span-1 flex flex-col gap-1 font-mono text-[0.62rem] uppercase tracking-wider text-muted">
             Откуда
-            <select name="origin" defaultValue={origin} className={inputCls}>
-              <option value="">—</option>
-              {ORIGIN_OPTIONS.map((o) => (
-                <option key={o.code} value={o.code}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
+            <CityAutocomplete
+              name="origin"
+              defaultCode={origin}
+              defaultLabel={origin ? cityName(origin) : ""}
+              placeholder="Ваш город"
+              className={`${inputCls} w-full`}
+              popular={ORIGIN_OPTIONS}
+            />
+          </div>
           <div className="col-span-1 flex flex-col gap-1 font-mono text-[0.62rem] uppercase tracking-wider text-muted">
             Куда
             <CityAutocomplete

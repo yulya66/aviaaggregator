@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TripBadge } from "@/components/trip-badge";
 import { isAdminEmail } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,6 +29,7 @@ export async function Nav() {
           <Link href="/anomalies" className="transition hover:text-accent">
             Аномалии
           </Link>
+          <TripBadge />
           {user ? (
             <>
               <Link href="/saved" className="transition hover:text-accent">

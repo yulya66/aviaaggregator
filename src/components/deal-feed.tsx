@@ -11,6 +11,7 @@ export type FeedCard = {
   route: string;
   routeTitle: string;
   dateLabel: string;
+  departDate: string; // YYYY-MM-DD (raw, for the trip builder)
   priceRub: number;
   airline: string | null;
   transfers: number;
@@ -124,6 +125,18 @@ export function DealFeed({
                 transfers={item.transfers}
                 deepLink={item.deepLink}
                 badge={item.badge}
+                trip={{
+                  id: `${item.origin}_${item.destination}_${item.departDate}`,
+                  origin: item.origin,
+                  destination: item.destination,
+                  route: item.route,
+                  dateLabel: item.dateLabel,
+                  departDate: item.departDate,
+                  priceRub: item.priceRub,
+                  airline: item.airline,
+                  transfers: item.transfers,
+                  deepLink: item.deepLink,
+                }}
               />
             ))}
           </div>

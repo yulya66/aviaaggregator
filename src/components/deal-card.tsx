@@ -1,3 +1,6 @@
+import type { TripLeg } from "@/lib/trip/store";
+import { AddToTrip } from "./add-to-trip";
+
 type DealCardProps = {
   route: string; // "Екатеринбург → Сочи" (pre-translated server-side)
   routeTitle?: string; // "SVX → AER" (IATA, shown on hover)
@@ -7,6 +10,7 @@ type DealCardProps = {
   transfers: number;
   deepLink: string;
   badge?: string;
+  trip?: TripLeg; // when set, shows the "+ в поездку" toggle
 };
 
 const RUB = new Intl.NumberFormat("ru-RU", {
@@ -24,6 +28,7 @@ export function DealCard({
   transfers,
   deepLink,
   badge,
+  trip,
 }: DealCardProps) {
   return (
     <article className="group flex items-stretch overflow-hidden rounded-card border border-line bg-card shadow-[0_1px_0_rgba(24,20,16,0.03)] transition duration-200 hover:-translate-y-0.5 hover:border-ink/20 hover:shadow-[0_14px_30px_-18px_rgba(24,20,16,0.45)]">
@@ -53,14 +58,17 @@ export function DealCard({
         <span className="font-mono text-xl font-bold tracking-tight tabular-nums">
           {RUB.format(priceRub)}
         </span>
-        <a
-          href={deepLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-accent transition group-hover:translate-x-0.5"
-        >
-          Купить →
-        </a>
+        <div className="flex flex-col items-end gap-1.5">
+          {trip && <AddToTrip leg={trip} />}
+          <a
+            href={deepLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-accent transition group-hover:translate-x-0.5"
+          >
+            Купить →
+          </a>
+        </div>
       </div>
     </article>
   );
