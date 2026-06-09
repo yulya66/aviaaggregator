@@ -7,7 +7,7 @@ import { buildAviasalesLink } from "@/lib/affiliate";
 import { formatDate } from "@/lib/format";
 import { dealId } from "@/lib/jobs/shared";
 import { createClient } from "@/lib/supabase/server";
-import { pricesCalendar, type TpLatestPrice } from "@/lib/tp/client";
+import { pricesCalendar, pricesLatest, type TpLatestPrice } from "@/lib/tp/client";
 
 export const dynamic = "force-dynamic";
 
@@ -99,11 +99,12 @@ export default async function HomePage({
   if (mode === "route") {
     const origin = sp.origin || "";
     const dest = sp.dest || "";
+    const both = Boolean(origin && dest);
     let routeItems: FeedCard[] = [];
-    if (origin && dest) {
-      // prices/latest stores only one cheapest fare per route, so for a specific route we
-      // pull a live calendar of dates from TP (cheapest per day) AND merge in whatever the
-      // feed already cached for this route — so the tab is never empty when data exists.
+    if (origin || dest) {
+      // Soft requirement — one city is enough. Both → live calendar of dates for the exact
+      // route; one side only → all flights from/into that city (prices/latest). Always merged
+      // with cached deals so the tab isn't empty when data exists.
       const marker = process.env.TP_PARTNER_MARKER ?? "";
       const candidates: TpLatestPrice[] = [];
 
@@ -111,15 +112,15 @@ export default async function HomePage({
         .from("deals")
         .select(DEAL_COLS)
         .eq("is_active", true)
-        .eq("origin_iata", origin)
-        .eq("destination_iata", dest)
         .gte("depart_date", from);
+      if (origin) q = q.eq("origin_iata", origin);
+      if (dest) q = q.eq("destination_iata", dest);
       if (to) q = q.lte("depart_date", to);
-      const dbRes = await q.limit(200);
+      const dbRes = await q.limit(300);
       for (const d of (dbRes.data ?? []) as DealRowDb[]) {
         candidates.push({
-          origin,
-          destination: dest,
+          origin: d.origin_iata,
+          destination: d.destination_iata,
           depart_date: d.depart_date,
           return_date: null,
           value: d.price_rub,
@@ -129,42 +130,55 @@ export default async function HomePage({
       }
 
       const span = to ? Math.min(6, Math.max(1, monthSpan(from, to))) : 3;
-      // The calendar can return ~a year of dates; without an explicit "По" cap the
-      // default view to the span window (first day after the last month in range).
-      const upperExclusive = to ? null : monthStarts(from, span + 1)[span];
-      const settled = await Promise.allSettled(
-        monthStarts(from, span).map((month) =>
-          pricesCalendar({ origin, destination: dest, month }),
-        ),
-      );
-      for (const s of settled) {
-        if (s.status === "fulfilled") candidates.push(...s.value);
+      // The calendar returns ~a year of dates; without an explicit "По" cap the exact-route
+      // view to the span window. One-sided search isn't capped (cheapest may be months out).
+      const upperExclusive = both && !to ? monthStarts(from, span + 1)[span] : null;
+      try {
+        if (both) {
+          const settled = await Promise.allSettled(
+            monthStarts(from, span).map((month) =>
+              pricesCalendar({ origin, destination: dest, month }),
+            ),
+          );
+          for (const s of settled) {
+            if (s.status === "fulfilled") candidates.push(...s.value);
+          }
+        } else {
+          const latest = origin
+            ? await pricesLatest({ origin, limit: 300 })
+            : await pricesLatest({ destination: dest, limit: 300 });
+          candidates.push(...latest);
+        }
+      } catch {
+        // keep whatever the DB returned
       }
 
       const best = new Map<string, TpLatestPrice>();
       for (const p of candidates) {
         if (!p.depart_date || p.depart_date < from) continue;
         if (to ? p.depart_date > to : upperExclusive && p.depart_date >= upperExclusive) continue;
-        const cur = best.get(p.depart_date);
-        if (!cur || p.value < cur.value) best.set(p.depart_date, p);
+        // Exact route → one entry per date; one-sided → one per route (cheapest).
+        const key = both ? p.depart_date : `${p.origin}_${p.destination}`;
+        const cur = best.get(key);
+        if (!cur || p.value < cur.value) best.set(key, p);
       }
       routeItems = [...best.values()]
         .sort((a, b) => a.value - b.value)
         .map((p) => {
-          const id = dealId(origin, p);
+          const id = dealId(p.origin, p);
           return {
             key: `route-${id}`,
-            origin,
-            destination: dest,
-            route: `${cityName(origin)} → ${cityName(dest)}`,
-            routeTitle: `${origin} → ${dest}`,
+            origin: p.origin,
+            destination: p.destination,
+            route: `${cityName(p.origin)} → ${cityName(p.destination)}`,
+            routeTitle: `${p.origin} → ${p.destination}`,
             dateLabel: formatDate(p.depart_date),
             priceRub: p.value,
             airline: p.airline,
             transfers: p.number_of_changes,
             deepLink: buildAviasalesLink({
-              origin,
-              destination: dest,
+              origin: p.origin,
+              destination: p.destination,
               departDate: p.depart_date,
               returnDate: null,
               marker,
@@ -230,12 +244,19 @@ export default async function HomePage({
           </button>
         </form>
 
-        {!origin || !dest ? (
-          <p className="mt-10 text-muted">Выберите города отправления и прибытия.</p>
+        {!origin && !dest ? (
+          <p className="mt-10 text-muted">
+            Укажите хотя бы один город — «Откуда» или «Куда». Можно задать только один: например,
+            только «Куда» — покажем рейсы туда откуда угодно.
+          </p>
         ) : routeItems.length === 0 ? (
           <p className="mt-10 text-muted">
-            По маршруту {cityName(origin)} → {cityName(dest)} пока нет находок. Попробуйте другие
-            даты или режим «Я хоть куда».
+            {both
+              ? `По маршруту ${cityName(origin)} → ${cityName(dest)}`
+              : origin
+                ? `Из города ${cityName(origin)}`
+                : `В город ${cityName(dest)}`}{" "}
+            пока нет находок. Попробуйте другие даты или режим «Я хоть куда».
           </p>
         ) : (
           <DealFeed items={routeItems} showHubFilters={false} priceCap={routeCap} />
