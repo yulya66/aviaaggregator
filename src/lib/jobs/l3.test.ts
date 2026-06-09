@@ -35,7 +35,7 @@ describe("runPollL3", () => {
 
     await runPollL3(db, tp, "1", 2);
 
-    expect(tp.pricesLatest).toHaveBeenCalledWith({ origin: TRANSIT_HUBS[2], limit: 300 });
+    expect(tp.pricesLatest).toHaveBeenCalledWith({ origin: TRANSIT_HUBS[2], limit: 1000 });
   });
 
   it("upserts fetched fares as deals and flags anomalies from candidates", async () => {

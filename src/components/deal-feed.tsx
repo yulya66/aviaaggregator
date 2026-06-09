@@ -41,15 +41,22 @@ export function DealFeed({
 }) {
   const [limit, setLimit] = useState(priceCap);
   const [hubs, setHubs] = useState<string[]>([]);
+  const [sort, setSort] = useState<"price" | "date">("price");
 
   const toggleHub = (code: string) =>
     setHubs((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
 
-  const shown = items.filter(
-    (i) =>
-      i.priceRub <= limit &&
-      (hubs.length === 0 || hubs.includes(i.origin) || hubs.includes(i.destination)),
-  );
+  const shown = items
+    .filter(
+      (i) =>
+        i.priceRub <= limit &&
+        (hubs.length === 0 || hubs.includes(i.origin) || hubs.includes(i.destination)),
+    )
+    .sort((a, b) =>
+      sort === "date"
+        ? a.departDate.localeCompare(b.departDate) || a.priceRub - b.priceRub
+        : a.priceRub - b.priceRub,
+    );
   const visible = shown.slice(0, RENDER_CAP);
   const fill = (limit / priceCap) * 100;
 
@@ -94,6 +101,28 @@ export function DealFeed({
           style={{ ["--fill" as string]: `${fill}%` }}
           aria-label="Максимальная цена"
         />
+
+        <div className="mt-4 flex gap-2">
+          {(
+            [
+              { key: "price", label: "Сначала дешёвые" },
+              { key: "date", label: "Ближайшие по дате" },
+            ] as const
+          ).map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => setSort(s.key)}
+              className={`rounded-full px-3 py-1 font-mono text-[0.66rem] uppercase tracking-wider transition ${
+                sort === s.key
+                  ? "bg-ink text-card"
+                  : "border border-line text-muted hover:border-ink hover:text-ink"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
 
         {showHubFilters && (
           <>

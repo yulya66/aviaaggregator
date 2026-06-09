@@ -3,6 +3,8 @@ import { env } from "@/lib/env";
 import { isRunnableJob, runJob } from "@/lib/jobs/run";
 
 export const dynamic = "force-dynamic";
+// limit=1000 polls write up to ~10k rows — allow beyond the 10s default.
+export const maxDuration = 60;
 
 const KNOWN_JOBS = [
   "poll_l1",

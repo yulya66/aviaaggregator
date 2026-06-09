@@ -63,6 +63,13 @@ export function toDeal(origin: string, p: TpLatestPrice, marker: string, nowIso:
   };
 }
 
+/** Split rows into batches so a single upsert/RPC statement stays a sane size. */
+export function chunk<T>(rows: T[], size = 1000): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) out.push(rows.slice(i, i + size));
+  return out;
+}
+
 /** Keep only the cheapest price per (destination, depart_date). */
 export function dedupeCheapest(prices: TpLatestPrice[]): TpLatestPrice[] {
   const best = new Map<string, TpLatestPrice>();

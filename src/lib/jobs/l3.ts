@@ -5,6 +5,7 @@ import { evaluateAnomaly } from "@/lib/anomaly";
 import type { TpClient } from "@/lib/tp/client";
 import {
   anomalyId,
+  chunk,
   type DealRow,
   dedupeCheapest,
   type SnapshotRow,
@@ -41,19 +42,20 @@ export async function runPollL3(
   const hub = TRANSIT_HUBS[hourOfDay % TRANSIT_HUBS.length];
   const nowIso = new Date().toISOString();
 
-  const results = await tp.pricesLatest({ origin: hub, limit: 300 });
+  // limit=1000 (TP max) — same 1 API call, wider coverage; writes are chunked below.
+  const results = await tp.pricesLatest({ origin: hub, limit: 1000 });
   const cheapest = dedupeCheapest(results);
   const snapshots: SnapshotRow[] = cheapest.map((p) => toSnapshot(hub, p));
   const deals: DealRow[] = cheapest.map((p) => toDeal(hub, p, marker, nowIso));
-  if (snapshots.length > 0) {
-    const { error } = await supabase.rpc("record_snapshots", { p_rows: snapshots });
+  for (const batch of chunk(snapshots)) {
+    const { error } = await supabase.rpc("record_snapshots", { p_rows: batch });
     if (error) throw new Error(`record_snapshots failed: ${JSON.stringify(error)}`);
   }
   // Surface every hub's fares in the shared feed (no extra API calls — same fetched data).
-  if (deals.length > 0) {
+  for (const batch of chunk(deals)) {
     const { error: dealErr } = await supabase
       .from("deals")
-      .upsert(deals, { onConflict: "origin_iata,destination_iata,depart_date" });
+      .upsert(batch, { onConflict: "origin_iata,destination_iata,depart_date" });
     if (dealErr) throw new Error(`deals upsert failed: ${JSON.stringify(dealErr)}`);
   }
 

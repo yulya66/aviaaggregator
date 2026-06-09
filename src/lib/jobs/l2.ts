@@ -1,7 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { HOME_HUB_CODES } from "@/data/hubs";
 import type { TpClient } from "@/lib/tp/client";
-import { type DealRow, dedupeCheapest, type SnapshotRow, toDeal, toSnapshot } from "./shared";
+import {
+  chunk,
+  type DealRow,
+  dedupeCheapest,
+  type SnapshotRow,
+  toDeal,
+  toSnapshot,
+} from "./shared";
 
 // Hub codes live in @/data/hubs (single source of truth).
 export const HOME_HUBS = HOME_HUB_CODES;
@@ -16,10 +23,11 @@ export async function runPollL2(
   const nowIso = new Date().toISOString();
   // Outbound (FROM each home hub) + inbound (INTO each home hub, e.g. Тбилиси → Екатеринбург),
   // all in parallel to stay within the Vercel function time limit.
+  // limit=1000 (TP max) — same 1 API call per hub, ~5× wider destination coverage.
   const tasks = HOME_HUBS.flatMap((hub) => [
-    tp.pricesLatest({ origin: hub, limit: 200 }).then((rows) => ({ inbound: false, hub, rows })),
+    tp.pricesLatest({ origin: hub, limit: 1000 }).then((rows) => ({ inbound: false, hub, rows })),
     tp
-      .pricesLatest({ destination: hub, limit: 200 })
+      .pricesLatest({ destination: hub, limit: 1000 })
       .then((rows) => ({ inbound: true, hub, rows })),
   ]);
   const settled = await Promise.allSettled(tasks);
@@ -46,15 +54,16 @@ export async function runPollL2(
   const snapshots = [...snapByRoute.values()];
   const deals = [...dealByRoute.values()];
 
-  if (snapshots.length > 0) {
-    const { error } = await supabase.rpc("record_snapshots", { p_rows: snapshots });
+  // Chunked writes: with limit=1000 a poll can carry ~10k rows — keep statements bounded.
+  for (const batch of chunk(snapshots)) {
+    const { error } = await supabase.rpc("record_snapshots", { p_rows: batch });
     if (error) throw new Error(`record_snapshots failed: ${JSON.stringify(error)}`);
   }
 
-  if (deals.length > 0) {
+  for (const batch of chunk(deals)) {
     const { error } = await supabase
       .from("deals")
-      .upsert(deals, { onConflict: "origin_iata,destination_iata,depart_date" });
+      .upsert(batch, { onConflict: "origin_iata,destination_iata,depart_date" });
     if (error) throw new Error(`deals upsert failed: ${JSON.stringify(error)}`);
   }
 

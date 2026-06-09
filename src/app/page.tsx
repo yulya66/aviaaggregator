@@ -287,7 +287,7 @@ export default async function HomePage({
     return q
       .or(`origin_iata.eq.${hub},destination_iata.eq.${hub}`)
       .order("price_rub", { ascending: true })
-      .limit(70);
+      .limit(120);
   });
   // anomalies has detected_at instead of last_seen_at — alias it to match DealRowDb.
   let anomQ = supabase
