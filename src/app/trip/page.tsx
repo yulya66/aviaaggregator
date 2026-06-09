@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { TpWidget } from "@/components/tp-widget";
 import { useTrip } from "@/lib/trip/store";
 
 const RUB = new Intl.NumberFormat("ru-RU", {
@@ -50,46 +51,58 @@ export default function TripPage() {
       ) : (
         <>
           <ol className="mt-6 space-y-3">
-            {legs.map((leg, i) => (
-              <li
-                key={leg.id}
-                className="flex items-stretch gap-4 rounded-card border border-line bg-card p-4"
-              >
-                <span className="grid h-7 w-7 shrink-0 place-items-center self-center rounded-full bg-paper font-mono text-xs text-muted">
-                  {i + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-display text-base font-bold tracking-tight">{leg.route}</h3>
-                  <p className="mt-1 font-mono text-[0.7rem] uppercase tracking-wider text-muted">
-                    {leg.dateLabel} ·{" "}
-                    {leg.transfers === 0 ? "прямой" : `пересадок ${leg.transfers}`}
-                    {leg.airline ? ` · ${leg.airline}` : ""}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end justify-between">
-                  <span className="font-mono text-lg font-bold tabular-nums">
-                    {RUB.format(leg.priceRub)}
+            {legs.map((leg, i) => {
+              // Soft sanity check: the next leg should not depart before the previous one.
+              const prev = legs[i - 1];
+              const conflict = prev && leg.departDate < prev.departDate;
+              return (
+                <li
+                  key={leg.id}
+                  className={`flex items-stretch gap-4 rounded-card border bg-card p-4 ${
+                    conflict ? "border-accent" : "border-line"
+                  }`}
+                >
+                  <span className="grid h-7 w-7 shrink-0 place-items-center self-center rounded-full bg-paper font-mono text-xs text-muted">
+                    {i + 1}
                   </span>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => remove(leg.id)}
-                      className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted transition hover:text-accent"
-                    >
-                      удалить
-                    </button>
-                    <a
-                      href={leg.deepLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-accent transition hover:opacity-70"
-                    >
-                      Купить →
-                    </a>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-display text-base font-bold tracking-tight">{leg.route}</h3>
+                    <p className="mt-1 font-mono text-[0.7rem] uppercase tracking-wider text-muted">
+                      {leg.dateLabel} ·{" "}
+                      {leg.transfers === 0 ? "прямой" : `пересадок ${leg.transfers}`}
+                      {leg.airline ? ` · ${leg.airline}` : ""}
+                    </p>
+                    {conflict && (
+                      <p className="mt-1 font-mono text-[0.64rem] uppercase tracking-wider text-accent">
+                        ⚠ вылет раньше предыдущего рейса ({prev.dateLabel})
+                      </p>
+                    )}
                   </div>
-                </div>
-              </li>
-            ))}
+                  <div className="flex flex-col items-end justify-between">
+                    <span className="font-mono text-lg font-bold tabular-nums">
+                      {RUB.format(leg.priceRub)}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => remove(leg.id)}
+                        className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted transition hover:text-accent"
+                      >
+                        удалить
+                      </button>
+                      <a
+                        href={leg.deepLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-accent transition hover:opacity-70"
+                      >
+                        Купить →
+                      </a>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
           </ol>
 
           <div className="mt-5 flex items-center justify-between rounded-card border border-ink bg-card p-5">
@@ -134,6 +147,8 @@ export default function TripPage() {
           </div>
         </>
       )}
+
+      <TpWidget />
     </main>
   );
 }

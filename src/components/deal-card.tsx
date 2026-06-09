@@ -11,6 +11,7 @@ type DealCardProps = {
   deepLink: string;
   badge?: string;
   trip?: TripLeg; // when set, shows the "+ в поездку" toggle
+  priceNote?: string; // e.g. "цена от 07.06" — when the cached fare was last seen
 };
 
 const RUB = new Intl.NumberFormat("ru-RU", {
@@ -29,6 +30,7 @@ export function DealCard({
   deepLink,
   badge,
   trip,
+  priceNote,
 }: DealCardProps) {
   return (
     <article className="group flex items-stretch overflow-hidden rounded-card border border-line bg-card shadow-[0_1px_0_rgba(24,20,16,0.03)] transition duration-200 hover:-translate-y-0.5 hover:border-ink/20 hover:shadow-[0_14px_30px_-18px_rgba(24,20,16,0.45)]">
@@ -53,11 +55,16 @@ export function DealCard({
       {/* Perforation */}
       <div className="ticket-divider my-2" />
 
-      {/* Price stub */}
+      {/* Price stub. "~" — cached fare, the live one is on Aviasales behind «Купить». */}
       <div className="flex w-[8.5rem] shrink-0 flex-col items-end justify-between p-5 sm:w-40">
-        <span className="font-mono text-xl font-bold tracking-tight tabular-nums">
-          {RUB.format(priceRub)}
-        </span>
+        <div className="text-right">
+          <span className="font-mono text-xl font-bold tracking-tight tabular-nums">
+            ~{RUB.format(priceRub)}
+          </span>
+          <p className="mt-0.5 font-mono text-[0.58rem] uppercase tracking-wider text-muted">
+            {priceNote ?? "ориентир"}
+          </p>
+        </div>
         <div className="flex flex-col items-end gap-1.5">
           {trip && <AddToTrip leg={trip} />}
           <a

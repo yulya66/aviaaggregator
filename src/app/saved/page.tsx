@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import Link from "next/link";
 import { cityName } from "@/data/airports";
 import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -20,7 +20,32 @@ export default async function SavedPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+
+  if (!user) {
+    return (
+      <main className="mx-auto max-w-3xl px-6 py-10">
+        <p className="kicker">L1 · персональный трекинг</p>
+        <h1 className="mt-2 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
+          Мои поиски
+        </h1>
+        <div className="mt-8 rounded-card border border-line bg-card p-6">
+          <p className="text-sm">
+            Сохранённые поиски — это маршруты, которые сайт <b>отслеживает за вас</b>: каждые 6
+            часов проверяет цены и кладёт совпадения в ленту.
+          </p>
+          <p className="mt-2 text-sm text-muted">
+            Чтобы они сохранялись за вами, нужен аккаунт — вход занимает минуту.
+          </p>
+          <Link
+            href="/auth/login"
+            className="mt-5 inline-block rounded-lg bg-ink px-5 py-2.5 font-mono text-xs uppercase tracking-[0.18em] text-card transition hover:bg-accent"
+          >
+            Войти или зарегистрироваться →
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   const { data, error } = await supabase
     .from("saved_searches")

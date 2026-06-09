@@ -17,6 +17,7 @@ export type FeedCard = {
   transfers: number;
   deepLink: string;
   badge?: string;
+  priceNote?: string; // "цена от 07.06"
 };
 
 const RUB = new Intl.NumberFormat("ru-RU", {
@@ -125,6 +126,7 @@ export function DealFeed({
                 transfers={item.transfers}
                 deepLink={item.deepLink}
                 badge={item.badge}
+                priceNote={item.priceNote}
                 trip={{
                   id: `${item.origin}_${item.destination}_${item.departDate}`,
                   origin: item.origin,

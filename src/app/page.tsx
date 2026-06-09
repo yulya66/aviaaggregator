@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CityAutocomplete } from "@/components/city-autocomplete";
 import { DealFeed, type FeedCard } from "@/components/deal-feed";
+import { TpWidget } from "@/components/tp-widget";
 import { cityName } from "@/data/airports";
 import { ALL_HUB_CODES, ORIGIN_OPTIONS, POPULAR_DESTINATIONS } from "@/data/hubs";
 import { buildAviasalesLink } from "@/lib/affiliate";
@@ -12,7 +13,7 @@ import { pricesCalendar, pricesLatest, type TpLatestPrice } from "@/lib/tp/clien
 export const dynamic = "force-dynamic";
 
 const DEAL_COLS =
-  "id, origin_iata, destination_iata, depart_date, price_rub, airline, transfers, deep_link";
+  "id, origin_iata, destination_iata, depart_date, price_rub, airline, transfers, deep_link, last_seen_at";
 
 type DealRowDb = {
   id: string;
@@ -23,8 +24,16 @@ type DealRowDb = {
   airline: string | null;
   transfers: number;
   deep_link: string;
+  last_seen_at?: string | null;
   discount_pct?: number;
 };
+
+/** "2026-06-07T14:00:00Z" → "цена от 07.06" */
+function priceNoteFrom(seenAt: string | null | undefined): string | undefined {
+  if (!seenAt) return undefined;
+  const [, m, d] = seenAt.slice(0, 10).split("-");
+  return `цена от ${d}.${m}`;
+}
 
 const inputCls =
   "rounded-lg border border-line bg-paper px-3 py-2 font-mono text-sm text-ink outline-none focus:border-accent";
@@ -57,6 +66,7 @@ function toCard(d: DealRowDb, prefix: string): FeedCard {
     airline: d.airline,
     transfers: d.transfers,
     deepLink: d.deep_link,
+    priceNote: priceNoteFrom(d.last_seen_at),
     ...(d.discount_pct != null ? { badge: `−${Math.round(Number(d.discount_pct))}%` } : {}),
   };
 }
@@ -178,6 +188,7 @@ export default async function HomePage({
             priceRub: p.value,
             airline: p.airline,
             transfers: p.number_of_changes,
+            priceNote: priceNoteFrom(today),
             deepLink: buildAviasalesLink({
               origin: p.origin,
               destination: p.destination,
@@ -263,6 +274,8 @@ export default async function HomePage({
         ) : (
           <DealFeed items={routeItems} showHubFilters={false} priceCap={routeCap} />
         )}
+
+        <TpWidget />
       </main>
     );
   }
@@ -276,9 +289,12 @@ export default async function HomePage({
       .order("price_rub", { ascending: true })
       .limit(70);
   });
+  // anomalies has detected_at instead of last_seen_at — alias it to match DealRowDb.
   let anomQ = supabase
     .from("anomalies")
-    .select(`${DEAL_COLS}, discount_pct`)
+    .select(
+      "id, origin_iata, destination_iata, depart_date, price_rub, airline, transfers, deep_link, last_seen_at:detected_at, discount_pct",
+    )
     .eq("is_active", true)
     .gte("depart_date", from);
   if (to) anomQ = anomQ.lte("depart_date", to);

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { addLeg, removeLeg, totalOf } from "./logic";
 
 export type TripLeg = {
   id: string; // `${origin}_${destination}_${departDate}` — dedupe key
@@ -54,14 +55,14 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
   }, [legs, hydrated]);
 
   const add = useCallback((leg: TripLeg) => {
-    setLegs((prev) => (prev.some((l) => l.id === leg.id) ? prev : [...prev, leg]));
+    setLegs((prev) => addLeg(prev, leg));
   }, []);
   const remove = useCallback((id: string) => {
-    setLegs((prev) => prev.filter((l) => l.id !== id));
+    setLegs((prev) => removeLeg(prev, id));
   }, []);
   const has = useCallback((id: string) => legs.some((l) => l.id === id), [legs]);
   const clear = useCallback(() => setLegs([]), []);
-  const total = useMemo(() => legs.reduce((s, l) => s + l.priceRub, 0), [legs]);
+  const total = useMemo(() => totalOf(legs), [legs]);
 
   const value = useMemo(
     () => ({ legs, hydrated, add, remove, has, clear, total }),
