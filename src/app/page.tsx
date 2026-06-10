@@ -327,7 +327,7 @@ export default async function HomePage({
     <main className="mx-auto max-w-3xl px-6 py-10">
       <p className="kicker">Рейсы из ваших городов</p>
       <h1 className="mt-2 font-display text-4xl font-extrabold leading-[1.04] tracking-tight sm:text-5xl">
-        Дешёвые рейсы
+        Топ-цены
       </h1>
       <Tabs active="feed" />
       <p className="mt-4 max-w-md text-sm text-muted">

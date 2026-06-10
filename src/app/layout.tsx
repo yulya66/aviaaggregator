@@ -22,8 +22,8 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "aviatop — дешёвые рейсы и ценовые аномалии",
-  description: "Дешёвые авиабилеты и ценовые аномалии из ваших городов — туда и обратно",
+  title: "aviatop — топ-цены на рейсы из ваших городов",
+  description: "Топ-цены и ценовые аномалии на рейсы из ваших городов — туда и обратно",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

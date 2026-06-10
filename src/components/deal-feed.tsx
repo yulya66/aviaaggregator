@@ -94,11 +94,17 @@ export function DealFeed({
 
   return (
     <div>
-      <div className="z-10 mt-6 rounded-card border border-line bg-card/90 p-5 backdrop-blur-md sm:sticky sm:top-[60px]">
+      <div className="mt-6 rounded-card border border-line bg-card p-5">
         <div className="flex items-baseline justify-between">
-          <div>
+          <div className="flex items-baseline gap-2">
             <p className="kicker">Цена до</p>
-            <p className="font-mono text-2xl font-bold tabular-nums">{RUB.format(limit)}</p>
+            <p
+              className={`font-mono text-sm font-bold tabular-nums ${
+                limit >= priceCap ? "text-muted" : "text-accent"
+              }`}
+            >
+              {limit >= priceCap ? "любая" : RUB.format(limit)}
+            </p>
           </div>
           <p className="font-mono text-[0.7rem] uppercase tracking-widest text-muted">
             {shown.length} рейсов
@@ -120,7 +126,7 @@ export function DealFeed({
           {(
             [
               {
-                label: "Сначала дешёвые",
+                label: "Сначала топ",
                 active: byPrice,
                 // keep at least one mode on: refuse to turn off if it's the last active
                 toggle: () => setByPrice((v) => (v && !byDate ? v : !v)),
@@ -147,7 +153,7 @@ export function DealFeed({
           ))}
           {byPrice && byDate && (
             <span className="font-mono text-[0.62rem] uppercase tracking-wider text-accent">
-              = дёшево и скоро
+              = топ и скоро
             </span>
           )}
         </div>
@@ -167,7 +173,7 @@ export function DealFeed({
         <p className="mt-8 text-center text-muted">
           {showHubFilters
             ? "Ничего под эти фильтры. Поднимите цену или снимите города."
-            : "Ничего дешевле этой цены. Поднимите ползунок."}
+            : "Ничего под эту цену. Поднимите ползунок."}
         </p>
       ) : (
         <>
