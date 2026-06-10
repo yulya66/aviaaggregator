@@ -41,22 +41,36 @@ export function DealFeed({
 }) {
   const [limit, setLimit] = useState(priceCap);
   const [hubs, setHubs] = useState<string[]>([]);
-  const [sort, setSort] = useState<"price" | "date">("price");
+  // Independent toggles; both on = combined "cheap AND soon" ranking.
+  const [byPrice, setByPrice] = useState(true);
+  const [byDate, setByDate] = useState(false);
 
   const toggleHub = (code: string) =>
     setHubs((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
 
-  const shown = items
-    .filter(
-      (i) =>
-        i.priceRub <= limit &&
-        (hubs.length === 0 || hubs.includes(i.origin) || hubs.includes(i.destination)),
-    )
-    .sort((a, b) =>
-      sort === "date"
-        ? a.departDate.localeCompare(b.departDate) || a.priceRub - b.priceRub
-        : a.priceRub - b.priceRub,
+  const filtered = items.filter(
+    (i) =>
+      i.priceRub <= limit &&
+      (hubs.length === 0 || hubs.includes(i.origin) || hubs.includes(i.destination)),
+  );
+
+  let shown: FeedCard[];
+  if (byPrice && byDate) {
+    // Normalize both axes to 0..1 and rank by the sum — cheapest-soonest first.
+    const maxPrice = Math.max(...filtered.map((i) => i.priceRub), 1);
+    const dayMs = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const days = (i: FeedCard) => Math.max(0, (Date.parse(i.departDate) - now) / dayMs);
+    const maxDays = Math.max(...filtered.map(days), 1);
+    const score = (i: FeedCard) => i.priceRub / maxPrice + days(i) / maxDays;
+    shown = [...filtered].sort((a, b) => score(a) - score(b));
+  } else if (byDate) {
+    shown = [...filtered].sort(
+      (a, b) => a.departDate.localeCompare(b.departDate) || a.priceRub - b.priceRub,
     );
+  } else {
+    shown = [...filtered].sort((a, b) => a.priceRub - b.priceRub);
+  }
   const visible = shown.slice(0, RENDER_CAP);
   const fill = (limit / priceCap) * 100;
 
@@ -102,19 +116,28 @@ export function DealFeed({
           aria-label="Максимальная цена"
         />
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           {(
             [
-              { key: "price", label: "Сначала дешёвые" },
-              { key: "date", label: "Ближайшие по дате" },
+              {
+                label: "Сначала дешёвые",
+                active: byPrice,
+                // keep at least one mode on: refuse to turn off if it's the last active
+                toggle: () => setByPrice((v) => (v && !byDate ? v : !v)),
+              },
+              {
+                label: "Ближайшие по дате",
+                active: byDate,
+                toggle: () => setByDate((v) => (v && !byPrice ? v : !v)),
+              },
             ] as const
           ).map((s) => (
             <button
-              key={s.key}
+              key={s.label}
               type="button"
-              onClick={() => setSort(s.key)}
-              className={`rounded-full px-3 py-1 font-mono text-[0.66rem] uppercase tracking-wider transition ${
-                sort === s.key
+              onClick={s.toggle}
+              className={`rounded-full px-3 py-1.5 font-mono text-[0.66rem] uppercase tracking-wider transition ${
+                s.active
                   ? "bg-ink text-card"
                   : "border border-line text-muted hover:border-ink hover:text-ink"
               }`}
@@ -122,6 +145,11 @@ export function DealFeed({
               {s.label}
             </button>
           ))}
+          {byPrice && byDate && (
+            <span className="font-mono text-[0.62rem] uppercase tracking-wider text-accent">
+              = дёшево и скоро
+            </span>
+          )}
         </div>
 
         {showHubFilters && (
