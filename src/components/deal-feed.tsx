@@ -103,7 +103,7 @@ export function DealFeed({
                 limit >= priceCap ? "text-muted" : "text-accent"
               }`}
             >
-              {limit >= priceCap ? "любая" : RUB.format(limit)}
+              {RUB.format(limit)}
             </p>
           </div>
           <p className="font-mono text-[0.7rem] uppercase tracking-widest text-muted">
