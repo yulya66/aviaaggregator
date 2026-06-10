@@ -56,7 +56,7 @@ export function DealCard({
       <div className="ticket-divider my-2" />
 
       {/* Price stub. "~" — cached fare, the live one is on Aviasales behind «Купить». */}
-      <div className="flex w-[8.5rem] shrink-0 flex-col items-end justify-between p-5 sm:w-40">
+      <div className="flex w-[9.5rem] shrink-0 flex-col items-end justify-between gap-3 p-4 sm:w-44">
         <div className="text-right">
           <span className="font-mono text-xl font-bold tracking-tight tabular-nums">
             ~{RUB.format(priceRub)}
@@ -65,13 +65,13 @@ export function DealCard({
             {priceNote ?? "ориентир"}
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1.5">
+        <div className="flex w-full flex-col gap-1.5">
           {trip && <AddToTrip leg={trip} />}
           <a
             href={deepLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-accent transition group-hover:translate-x-0.5"
+            className="w-full rounded-lg bg-accent py-2 text-center font-mono text-[0.7rem] uppercase tracking-[0.12em] text-card transition hover:bg-ink"
           >
             Купить →
           </a>

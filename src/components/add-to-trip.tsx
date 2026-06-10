@@ -10,8 +10,10 @@ export function AddToTrip({ leg }: { leg: TripLeg }) {
     <button
       type="button"
       onClick={() => (inTrip ? remove(leg.id) : add(leg))}
-      className={`font-mono text-[0.62rem] uppercase tracking-[0.14em] transition ${
-        inTrip ? "text-muted hover:text-accent" : "text-accent hover:opacity-70"
+      className={`w-full rounded-lg border py-2 text-center font-mono text-[0.66rem] uppercase tracking-[0.12em] transition ${
+        inTrip
+          ? "border-line bg-paper text-muted hover:border-accent hover:text-accent"
+          : "border-accent text-accent hover:bg-accent hover:text-card"
       }`}
     >
       {inTrip ? "✓ в поездке" : "+ в поездку"}

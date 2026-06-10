@@ -78,15 +78,15 @@ export default function TripPage() {
                       </p>
                     )}
                   </div>
-                  <div className="flex flex-col items-end justify-between">
+                  <div className="flex flex-col items-end justify-between gap-2">
                     <span className="font-mono text-lg font-bold tabular-nums">
                       {RUB.format(leg.priceRub)}
                     </span>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => remove(leg.id)}
-                        className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted transition hover:text-accent"
+                        className="rounded-lg border border-line px-3 py-2 font-mono text-[0.64rem] uppercase tracking-[0.12em] text-muted transition hover:border-accent hover:text-accent"
                       >
                         удалить
                       </button>
@@ -94,7 +94,7 @@ export default function TripPage() {
                         href={leg.deepLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-accent transition hover:opacity-70"
+                        className="rounded-lg bg-accent px-4 py-2 font-mono text-[0.68rem] uppercase tracking-[0.12em] text-card transition hover:bg-ink"
                       >
                         Купить →
                       </a>
