@@ -25,9 +25,25 @@ describe("env", () => {
     expect(env.CRON_BEARER_TOKEN).toBe("cron-token");
   });
 
-  it("throws if a required var is missing", async () => {
+  it("does not throw at import time when a var is missing (lazy)", async () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = "";
-    await expect(import("./env")).rejects.toThrow(/SUPABASE_SERVICE_ROLE_KEY/);
+    await expect(import("./env")).resolves.toBeTruthy();
+  });
+
+  it("throws only when the missing var is accessed", async () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "";
+    const { env } = await import("./env");
+    expect(() => env.SUPABASE_SERVICE_ROLE_KEY).toThrow(/SUPABASE_SERVICE_ROLE_KEY/);
+  });
+
+  it("lets a present var be read even when an unrelated var is missing", async () => {
+    // Middleware needs only the two NEXT_PUBLIC_SUPABASE_* vars; a missing
+    // server-only var must not take the whole site down.
+    process.env.CRON_BEARER_TOKEN = "";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "";
+    const { env } = await import("./env");
+    expect(env.NEXT_PUBLIC_SUPABASE_URL).toBe("https://test.supabase.co");
+    expect(env.NEXT_PUBLIC_SUPABASE_ANON_KEY).toBe("anon-key");
   });
 
   it("normalizes trailing slash on Supabase URL", async () => {
