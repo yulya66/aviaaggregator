@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { cityCountryCode, cityCountryName, cityName, countryName, isDomestic } from "./airports";
+import {
+  cityCountryCode,
+  cityCountryName,
+  cityName,
+  countryName,
+  countryNameGenitive,
+  isDomestic,
+} from "./airports";
 
 describe("airports country accessors", () => {
   it("maps home hubs to RU", () => {
@@ -15,6 +22,13 @@ describe("airports country accessors", () => {
     expect(isDomestic("IST")).toBe(false);
     expect(cityCountryCode("DXB")).toBe("AE");
     expect(countryName("AE")).toBe("ОАЭ");
+  });
+
+  it("gives the genitive country form for «в любой город <страны>»", () => {
+    expect(countryNameGenitive("IT")).toBe("Италии");
+    expect(countryNameGenitive("TR")).toBe("Турции");
+    expect(countryNameGenitive("RU")).toBe("России");
+    expect(countryNameGenitive("ZZ")).toBe("ZZ"); // unknown → raw code
   });
 
   it("falls back gracefully on unknown codes", () => {

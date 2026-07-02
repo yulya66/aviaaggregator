@@ -12,6 +12,7 @@ type DealCardProps = {
   badge?: string;
   trip?: TripLeg; // when set, shows the "+ в поездку" toggle
   priceNote?: string; // e.g. "цена от 07.06" — when the cached fare was last seen
+  regionNote?: string; // destination country, e.g. "Турция" — shown for reference
 };
 
 const RUB = new Intl.NumberFormat("ru-RU", {
@@ -31,6 +32,7 @@ export function DealCard({
   badge,
   trip,
   priceNote,
+  regionNote,
 }: DealCardProps) {
   return (
     <article className="group flex items-stretch overflow-hidden rounded-card border border-line bg-card shadow-[0_1px_0_rgba(24,20,16,0.03)] transition duration-200 hover:-translate-y-0.5 hover:border-ink/20 hover:shadow-[0_14px_30px_-18px_rgba(24,20,16,0.45)]">
@@ -49,6 +51,7 @@ export function DealCard({
         <p className="mt-2 font-mono text-[0.72rem] uppercase tracking-wider text-muted">
           {dateLabel} · {transfers === 0 ? "прямой" : `пересадок ${transfers}`}
           {airline ? ` · ${airline}` : ""}
+          {regionNote ? ` · ${regionNote}` : ""}
         </p>
       </div>
 

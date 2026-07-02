@@ -18,6 +18,8 @@ export type FeedCard = {
   deepLink: string;
   badge?: string;
   priceNote?: string; // "цена от 07.06"
+  regionNote?: string; // destination country, e.g. "Турция" — shown for reference
+  abroad?: boolean; // destination outside Russia — computed server-side to keep the client lean
 };
 
 const RUB = new Intl.NumberFormat("ru-RU", {
@@ -33,10 +35,12 @@ const RENDER_CAP = 200;
 export function DealFeed({
   items,
   showHubFilters = true,
+  showAbroadFilter = true,
   priceCap = MAX_PRICE,
 }: {
   items: FeedCard[];
   showHubFilters?: boolean;
+  showAbroadFilter?: boolean;
   priceCap?: number;
 }) {
   const [limit, setLimit] = useState(priceCap);
@@ -44,6 +48,8 @@ export function DealFeed({
   // Independent toggles; both on = combined "cheap AND soon" ranking.
   const [byPrice, setByPrice] = useState(true);
   const [byDate, setByDate] = useState(false);
+  // "Только за границу" — keep only destinations outside Russia (e.g. Екб → abroad).
+  const [abroadOnly, setAbroadOnly] = useState(false);
 
   const toggleHub = (code: string) =>
     setHubs((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
@@ -51,7 +57,8 @@ export function DealFeed({
   const filtered = items.filter(
     (i) =>
       i.priceRub <= limit &&
-      (hubs.length === 0 || hubs.includes(i.origin) || hubs.includes(i.destination)),
+      (hubs.length === 0 || hubs.includes(i.origin) || hubs.includes(i.destination)) &&
+      (!abroadOnly || i.abroad === true),
   );
 
   let shown: FeedCard[];
@@ -156,6 +163,19 @@ export function DealFeed({
               = топ и скоро
             </span>
           )}
+          {showAbroadFilter && (
+            <button
+              type="button"
+              onClick={() => setAbroadOnly((v) => !v)}
+              className={`rounded-full px-3 py-1.5 font-mono text-[0.66rem] uppercase tracking-wider transition ${
+                abroadOnly
+                  ? "bg-ink text-card"
+                  : "border border-line text-muted hover:border-ink hover:text-ink"
+              }`}
+            >
+              Только за границу
+            </button>
+          )}
         </div>
 
         {showHubFilters && (
@@ -190,6 +210,7 @@ export function DealFeed({
                 deepLink={item.deepLink}
                 badge={item.badge}
                 priceNote={item.priceNote}
+                regionNote={item.regionNote}
                 trip={{
                   id: `${item.origin}_${item.destination}_${item.departDate}`,
                   origin: item.origin,

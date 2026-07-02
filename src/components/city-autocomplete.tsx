@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-type City = { code: string; name: string };
+type City = { code: string; name: string; type?: "city" | "country" };
 
 export function CityAutocomplete({
   name,
@@ -125,7 +125,13 @@ export function CityAutocomplete({
                 }`}
               >
                 <span>{c.name}</span>
-                <span className="font-mono text-[0.65rem] text-muted">{c.code}</span>
+                {c.type === "country" ? (
+                  <span className="shrink-0 rounded-full border border-line px-1.5 py-0.5 font-mono text-[0.55rem] uppercase tracking-wider text-muted">
+                    страна
+                  </span>
+                ) : (
+                  <span className="font-mono text-[0.65rem] text-muted">{c.code}</span>
+                )}
               </button>
             </li>
           ))}

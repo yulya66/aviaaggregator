@@ -2,8 +2,14 @@ import Link from "next/link";
 import { CityAutocomplete } from "@/components/city-autocomplete";
 import { DealFeed, type FeedCard } from "@/components/deal-feed";
 import { TpWidget } from "@/components/tp-widget";
-import { cityName } from "@/data/airports";
-import { ALL_HUB_CODES, ORIGIN_OPTIONS, POPULAR_DESTINATIONS } from "@/data/hubs";
+import {
+  cityCountryName,
+  cityName,
+  countryName,
+  countryNameGenitive,
+  isDomestic,
+} from "@/data/airports";
+import { ALL_HUB_CODES, HOME_HUB_CODES, ORIGIN_OPTIONS, POPULAR_DESTINATIONS } from "@/data/hubs";
 import { buildAviasalesLink } from "@/lib/affiliate";
 import { formatDate } from "@/lib/format";
 import { dealId } from "@/lib/jobs/shared";
@@ -67,6 +73,8 @@ function toCard(d: DealRowDb, prefix: string): FeedCard {
     transfers: d.transfers,
     deepLink: d.deep_link,
     priceNote: priceNoteFrom(d.last_seen_at),
+    regionNote: cityCountryName(d.destination_iata),
+    abroad: !isDomestic(d.destination_iata),
     ...(d.discount_pct != null ? { badge: `−${Math.round(Number(d.discount_pct))}%` } : {}),
   };
 }
@@ -110,66 +118,92 @@ export default async function HomePage({
   if (mode === "route") {
     const origin = sp.origin || "";
     const dest = sp.dest || "";
-    const both = Boolean(origin && dest);
+    // «Куда» accepts a country: a 2-letter code is a country, 3 letters a city (spec 2026-06-19).
+    const destIsCountry = dest.length === 2;
+    // Exact city→city route → date calendar; anything else → one cheapest fare per route.
+    const exactRoute = Boolean(origin && dest) && !destIsCountry;
     let routeItems: FeedCard[] = [];
     if (origin || dest) {
-      // Soft requirement — one city is enough. Both → live calendar of dates for the exact
-      // route; one side only → all flights from/into that city (prices/latest). Always merged
-      // with cached deals so the tab isn't empty when data exists.
+      // One city is enough. Exact city→city → live calendar of dates for the route; one side
+      // only → all flights from/into that city (prices/latest); a country → every city of that
+      // country. City paths merge cached deals; country paths are live TP only (see below).
       const marker = process.env.TP_PARTNER_MARKER ?? "";
       const candidates: TpLatestPrice[] = [];
-
-      let q = supabase
-        .from("deals")
-        .select(DEAL_COLS)
-        .eq("is_active", true)
-        .gte("depart_date", from);
-      if (origin) q = q.eq("origin_iata", origin);
-      if (dest) q = q.eq("destination_iata", dest);
-      if (to) q = q.lte("depart_date", to);
-      const dbRes = await q.limit(300);
-      for (const d of (dbRes.data ?? []) as DealRowDb[]) {
-        candidates.push({
-          origin: d.origin_iata,
-          destination: d.destination_iata,
-          depart_date: d.depart_date,
-          return_date: null,
-          value: d.price_rub,
-          airline: d.airline,
-          number_of_changes: d.transfers,
-        });
-      }
-
       const span = to ? Math.min(6, Math.max(1, monthSpan(from, to))) : 3;
-      // The calendar returns ~a year of dates; without an explicit "По" cap the exact-route
-      // view to the span window. One-sided search isn't capped (cheapest may be months out).
-      const upperExclusive = both && !to ? monthStarts(from, span + 1)[span] : null;
-      try {
-        if (both) {
-          const settled = await Promise.allSettled(
-            monthStarts(from, span).map((month) =>
-              pricesCalendar({ origin, destination: dest, month }),
-            ),
-          );
-          for (const s of settled) {
-            if (s.status === "fulfilled") candidates.push(...s.value);
+
+      if (destIsCountry) {
+        // Country destination — live TP only. DB deals store city codes, not countries, so the
+        // cache can't be mixed in (spec 2026-06-19). With an origin it's a single call; without
+        // one, fan out across our home hubs (top-50 cheapest each) rather than the whole planet.
+        try {
+          if (origin) {
+            candidates.push(...(await pricesLatest({ origin, destination: dest, limit: 300 })));
+          } else {
+            const settled = await Promise.allSettled(
+              HOME_HUB_CODES.map((hub) =>
+                pricesLatest({ origin: hub, destination: dest, limit: 50 }),
+              ),
+            );
+            for (const s of settled) {
+              if (s.status === "fulfilled") candidates.push(...s.value);
+            }
           }
-        } else {
-          const latest = origin
-            ? await pricesLatest({ origin, limit: 300 })
-            : await pricesLatest({ destination: dest, limit: 300 });
-          candidates.push(...latest);
+        } catch {
+          // no data — the empty state handles it
         }
-      } catch {
-        // keep whatever the DB returned
+      } else {
+        let q = supabase
+          .from("deals")
+          .select(DEAL_COLS)
+          .eq("is_active", true)
+          .gte("depart_date", from);
+        if (origin) q = q.eq("origin_iata", origin);
+        if (dest) q = q.eq("destination_iata", dest);
+        if (to) q = q.lte("depart_date", to);
+        const dbRes = await q.limit(300);
+        for (const d of (dbRes.data ?? []) as DealRowDb[]) {
+          candidates.push({
+            origin: d.origin_iata,
+            destination: d.destination_iata,
+            depart_date: d.depart_date,
+            return_date: null,
+            value: d.price_rub,
+            airline: d.airline,
+            number_of_changes: d.transfers,
+          });
+        }
+
+        try {
+          if (exactRoute) {
+            const settled = await Promise.allSettled(
+              monthStarts(from, span).map((month) =>
+                pricesCalendar({ origin, destination: dest, month }),
+              ),
+            );
+            for (const s of settled) {
+              if (s.status === "fulfilled") candidates.push(...s.value);
+            }
+          } else {
+            const latest = origin
+              ? await pricesLatest({ origin, limit: 300 })
+              : await pricesLatest({ destination: dest, limit: 300 });
+            candidates.push(...latest);
+          }
+        } catch {
+          // keep whatever the DB returned
+        }
       }
+
+      // The calendar returns ~a year of dates; without an explicit "По" cap the exact-route view
+      // to the span window. One-sided/country search isn't capped (cheapest may be months out).
+      const upperExclusive = exactRoute && !to ? monthStarts(from, span + 1)[span] : null;
 
       const best = new Map<string, TpLatestPrice>();
       for (const p of candidates) {
         if (!p.depart_date || p.depart_date < from) continue;
         if (to ? p.depart_date > to : upperExclusive && p.depart_date >= upperExclusive) continue;
-        // Exact route → one entry per date; one-sided → one per route (cheapest).
-        const key = both ? p.depart_date : `${p.origin}_${p.destination}`;
+        // Exact route → one entry per date; else → one per route (cheapest).
+        const key = exactRoute ? p.depart_date : `${p.origin}_${p.destination}`;
         const cur = best.get(key);
         if (!cur || p.value < cur.value) best.set(key, p);
       }
@@ -189,6 +223,8 @@ export default async function HomePage({
             airline: p.airline,
             transfers: p.number_of_changes,
             priceNote: priceNoteFrom(today),
+            regionNote: cityCountryName(p.destination),
+            abroad: !isDomestic(p.destination),
             deepLink: buildAviasalesLink({
               origin: p.origin,
               destination: p.destination,
@@ -235,7 +271,7 @@ export default async function HomePage({
             <CityAutocomplete
               name="dest"
               defaultCode={dest}
-              defaultLabel={dest ? cityName(dest) : ""}
+              defaultLabel={dest ? (destIsCountry ? countryName(dest) : cityName(dest)) : ""}
               placeholder="Город или страна"
               className={`${inputCls} w-full`}
               popular={POPULAR_DESTINATIONS}
@@ -264,15 +300,24 @@ export default async function HomePage({
           </p>
         ) : routeItems.length === 0 ? (
           <p className="mt-10 text-muted">
-            {both
-              ? `По маршруту ${cityName(origin)} → ${cityName(dest)}`
-              : origin
-                ? `Из города ${cityName(origin)}`
-                : `В город ${cityName(dest)}`}{" "}
+            {destIsCountry
+              ? origin
+                ? `Из города ${cityName(origin)} в любой город ${countryNameGenitive(dest)}`
+                : `В любой город ${countryNameGenitive(dest)}`
+              : exactRoute
+                ? `По маршруту ${cityName(origin)} → ${cityName(dest)}`
+                : origin
+                  ? `Из города ${cityName(origin)}`
+                  : `В город ${cityName(dest)}`}{" "}
             пока нет находок. Попробуйте другие даты или режим «Я хоть куда».
           </p>
         ) : (
-          <DealFeed items={routeItems} showHubFilters={false} priceCap={routeCap} />
+          <DealFeed
+            items={routeItems}
+            showHubFilters={false}
+            showAbroadFilter={false}
+            priceCap={routeCap}
+          />
         )}
 
         <TpWidget />

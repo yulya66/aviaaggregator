@@ -1,6 +1,6 @@
 import { CITIES } from "./cities";
 import { CITY_COUNTRY } from "./city-country";
-import { COUNTRIES } from "./countries";
+import { COUNTRIES, COUNTRIES_GENITIVE } from "./countries";
 
 /** City name for an IATA (city) code, or the raw code if unknown. */
 export function cityName(iata: string): string {
@@ -15,6 +15,11 @@ export function cityCountryCode(iata: string): string {
 /** Russian country name for an ISO country code, or the raw code if unknown. */
 export function countryName(code: string): string {
   return COUNTRIES[code] ?? code;
+}
+
+/** Genitive (родительный) country name — for «в любой город <страны>». */
+export function countryNameGenitive(code: string): string {
+  return COUNTRIES_GENITIVE[code] ?? COUNTRIES[code] ?? code;
 }
 
 /** Russian country name for a city IATA code, or "" if unknown. */
