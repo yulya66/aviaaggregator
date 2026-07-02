@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CityAutocomplete } from "@/components/city-autocomplete";
+import { DateRange } from "@/components/date-range";
 import { DealFeed, type FeedCard } from "@/components/deal-feed";
 import { TpWidget } from "@/components/tp-widget";
 import {
@@ -277,14 +278,7 @@ export default async function HomePage({
               popular={POPULAR_DESTINATIONS}
             />
           </div>
-          <label className="flex flex-col gap-1 font-mono text-[0.62rem] uppercase tracking-wider text-muted">
-            Вылет с
-            <input type="date" name="from" defaultValue={sp.from || ""} className={inputCls} />
-          </label>
-          <label className="flex flex-col gap-1 font-mono text-[0.62rem] uppercase tracking-wider text-muted">
-            По
-            <input type="date" name="to" defaultValue={to} className={inputCls} />
-          </label>
+          <DateRange defaultFrom={sp.from || ""} defaultTo={to} inputClassName={inputCls} />
           <button
             type="submit"
             className="col-span-2 rounded-lg bg-ink py-2 font-mono text-xs uppercase tracking-[0.18em] text-card transition hover:bg-accent sm:col-span-4"
@@ -383,14 +377,7 @@ export default async function HomePage({
         method="get"
         className="mt-5 flex flex-wrap items-end gap-3 rounded-card border border-line bg-card p-4"
       >
-        <label className="flex flex-col gap-1 font-mono text-[0.62rem] uppercase tracking-wider text-muted">
-          Вылет с
-          <input type="date" name="from" defaultValue={from} className={inputCls} />
-        </label>
-        <label className="flex flex-col gap-1 font-mono text-[0.62rem] uppercase tracking-wider text-muted">
-          По
-          <input type="date" name="to" defaultValue={to} className={inputCls} />
-        </label>
+        <DateRange defaultFrom={from} defaultTo={to} inputClassName={inputCls} />
         <button
           type="submit"
           className="rounded-lg bg-ink px-4 py-2 font-mono text-xs uppercase tracking-[0.18em] text-card transition hover:bg-accent"
