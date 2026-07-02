@@ -1,4 +1,4 @@
-import { DealCard } from "@/components/deal-card";
+import { AnomalyFeed, type AnomalyItem } from "@/components/anomaly-feed";
 import { cityName } from "@/data/airports";
 import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -27,6 +27,35 @@ export default async function AnomaliesPage() {
   }
 
   const rows = data ?? [];
+  const items: AnomalyItem[] = rows.map((a) => {
+    const discount = Math.round(Number(a.discount_pct));
+    const route = `${cityName(a.origin_iata)} → ${cityName(a.destination_iata)}`;
+    return {
+      key: a.id,
+      ring: discount >= 50,
+      route,
+      routeTitle: `${a.origin_iata} → ${a.destination_iata}`,
+      dateLabel: formatDate(a.depart_date),
+      departDate: a.depart_date,
+      priceRub: a.price_rub,
+      airline: a.airline,
+      transfers: a.transfers,
+      deepLink: a.deep_link,
+      badge: `−${discount}% (обычно ${a.median_price_rub} ₽)`,
+      trip: {
+        id: `${a.origin_iata}_${a.destination_iata}_${a.depart_date}`,
+        origin: a.origin_iata,
+        destination: a.destination_iata,
+        route,
+        dateLabel: formatDate(a.depart_date),
+        departDate: a.depart_date,
+        priceRub: a.price_rub,
+        airline: a.airline,
+        transfers: a.transfers,
+        deepLink: a.deep_link,
+      },
+    };
+  });
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
@@ -38,47 +67,10 @@ export default async function AnomaliesPage() {
         Цены, рухнувшие заметно ниже своей медианы. Красная рамка — скидка ≥ 50%.
       </p>
 
-      {rows.length === 0 ? (
+      {items.length === 0 ? (
         <p className="mt-10 text-muted">Аномалий пока нет — движок копит снапшоты ~14 дней.</p>
       ) : (
-        <div className="mt-6 space-y-3">
-          {rows.map((a) => {
-            const discount = Math.round(Number(a.discount_pct));
-            return (
-              <div
-                key={a.id}
-                className={
-                  discount >= 50
-                    ? "rounded-card ring-2 ring-accent ring-offset-2 ring-offset-paper"
-                    : ""
-                }
-              >
-                <DealCard
-                  route={`${cityName(a.origin_iata)} → ${cityName(a.destination_iata)}`}
-                  routeTitle={`${a.origin_iata} → ${a.destination_iata}`}
-                  dateLabel={formatDate(a.depart_date)}
-                  priceRub={a.price_rub}
-                  airline={a.airline}
-                  transfers={a.transfers}
-                  deepLink={a.deep_link}
-                  badge={`−${discount}% (обычно ${a.median_price_rub} ₽)`}
-                  trip={{
-                    id: `${a.origin_iata}_${a.destination_iata}_${a.depart_date}`,
-                    origin: a.origin_iata,
-                    destination: a.destination_iata,
-                    route: `${cityName(a.origin_iata)} → ${cityName(a.destination_iata)}`,
-                    dateLabel: formatDate(a.depart_date),
-                    departDate: a.depart_date,
-                    priceRub: a.price_rub,
-                    airline: a.airline,
-                    transfers: a.transfers,
-                    deepLink: a.deep_link,
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
+        <AnomalyFeed items={items} />
       )}
     </main>
   );

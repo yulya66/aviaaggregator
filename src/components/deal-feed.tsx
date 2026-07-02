@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { HOME_HUBS, TRANSIT_HUBS } from "@/data/hubs";
+import { rankByToggles } from "@/lib/rank";
 import { DealCard } from "./deal-card";
+import { SortToggles } from "./sort-toggles";
 
 export type FeedCard = {
   key: string;
@@ -61,23 +63,7 @@ export function DealFeed({
       (!abroadOnly || i.abroad === true),
   );
 
-  let shown: FeedCard[];
-  if (byPrice && byDate) {
-    // Normalize both axes to 0..1 and rank by the sum — cheapest-soonest first.
-    const maxPrice = Math.max(...filtered.map((i) => i.priceRub), 1);
-    const dayMs = 24 * 60 * 60 * 1000;
-    const now = Date.now();
-    const days = (i: FeedCard) => Math.max(0, (Date.parse(i.departDate) - now) / dayMs);
-    const maxDays = Math.max(...filtered.map(days), 1);
-    const score = (i: FeedCard) => i.priceRub / maxPrice + days(i) / maxDays;
-    shown = [...filtered].sort((a, b) => score(a) - score(b));
-  } else if (byDate) {
-    shown = [...filtered].sort(
-      (a, b) => a.departDate.localeCompare(b.departDate) || a.priceRub - b.priceRub,
-    );
-  } else {
-    shown = [...filtered].sort((a, b) => a.priceRub - b.priceRub);
-  }
+  const shown = rankByToggles(filtered, byPrice, byDate);
   const visible = shown.slice(0, RENDER_CAP);
   const fill = (limit / priceCap) * 100;
 
@@ -130,39 +116,12 @@ export function DealFeed({
         />
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {(
-            [
-              {
-                label: "Сначала топ",
-                active: byPrice,
-                // keep at least one mode on: refuse to turn off if it's the last active
-                toggle: () => setByPrice((v) => (v && !byDate ? v : !v)),
-              },
-              {
-                label: "Ближайшие по дате",
-                active: byDate,
-                toggle: () => setByDate((v) => (v && !byPrice ? v : !v)),
-              },
-            ] as const
-          ).map((s) => (
-            <button
-              key={s.label}
-              type="button"
-              onClick={s.toggle}
-              className={`rounded-full px-3 py-1.5 font-mono text-[0.66rem] uppercase tracking-wider transition ${
-                s.active
-                  ? "bg-ink text-card"
-                  : "border border-line text-muted hover:border-ink hover:text-ink"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-          {byPrice && byDate && (
-            <span className="font-mono text-[0.62rem] uppercase tracking-wider text-accent">
-              = топ и скоро
-            </span>
-          )}
+          <SortToggles
+            byPrice={byPrice}
+            byDate={byDate}
+            setByPrice={setByPrice}
+            setByDate={setByDate}
+          />
           {showAbroadFilter && (
             <button
               type="button"
