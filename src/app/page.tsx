@@ -80,34 +80,43 @@ function toCard(d: DealRowDb, prefix: string): FeedCard {
   };
 }
 
-function Tabs({ active }: { active: "feed" | "route" }) {
+type SearchState = { mode?: string; from?: string; to?: string; origin?: string; dest?: string };
+
+/** Params carried between tabs so each tab's entered search survives a switch (item 6). */
+function tabQuery(sp: SearchState, mode?: "route"): Record<string, string> {
+  const q: Record<string, string> = {};
+  if (sp.origin) q.origin = sp.origin;
+  if (sp.dest) q.dest = sp.dest;
+  if (sp.from) q.from = sp.from;
+  if (sp.to) q.to = sp.to;
+  if (mode) q.mode = mode;
+  return q;
+}
+
+function Tabs({ active, sp }: { active: "feed" | "route"; sp: SearchState }) {
   const base =
     "rounded-full px-4 py-2 font-mono text-[0.7rem] uppercase tracking-[0.14em] transition";
   const on = "bg-ink text-card";
   const off = "border border-line text-muted hover:border-ink hover:text-ink";
   return (
     <div className="mt-6 flex gap-2">
-      <Link href="/" className={`${base} ${active === "feed" ? on : off}`}>
+      <Link
+        href={{ pathname: "/", query: tabQuery(sp) }}
+        className={`${base} ${active === "feed" ? on : off}`}
+      >
         Я хоть куда
       </Link>
-      <Link href="/?mode=route" className={`${base} ${active === "route" ? on : off}`}>
+      <Link
+        href={{ pathname: "/", query: tabQuery(sp, "route") }}
+        className={`${base} ${active === "route" ? on : off}`}
+      >
         Я знаю куда хочу
       </Link>
     </div>
   );
 }
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{
-    mode?: string;
-    from?: string;
-    to?: string;
-    origin?: string;
-    dest?: string;
-  }>;
-}) {
+export default async function HomePage({ searchParams }: { searchParams: Promise<SearchState> }) {
   const sp = await searchParams;
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
@@ -249,7 +258,7 @@ export default async function HomePage({
         <h1 className="mt-2 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
           Куда летим?
         </h1>
-        <Tabs active="route" />
+        <Tabs active="route" sp={sp} />
 
         <form
           method="get"
@@ -368,7 +377,7 @@ export default async function HomePage({
       <h1 className="mt-2 font-display text-4xl font-extrabold leading-[1.04] tracking-tight sm:text-5xl">
         Топ-цены
       </h1>
-      <Tabs active="feed" />
+      <Tabs active="feed" sp={sp} />
       <p className="mt-4 max-w-md text-sm text-muted">
         Туда и обратно, по всем хабам. Выберите даты и двигайте ползунок, чтобы найти самое горячее.
       </p>
