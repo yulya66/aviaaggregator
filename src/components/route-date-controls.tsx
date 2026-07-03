@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { RangeCalendar } from "./range-calendar";
+import { DateRange } from "./date-range";
 
 /**
- * «В одну сторону / Туда-обратно» toggle plus the shared range calendar, for the
- * route search form. Round-trip only changes the label and submits `trip=round`;
- * the calendar's two dates become туда/обратно (spec 2026-07-03).
+ * «В одну сторону / Туда-обратно» toggle plus the two date inputs, for the route
+ * search form. Round-trip only changes the labels («Туда» / «Обратно») and submits
+ * `trip=round`; the two dates become туда/обратно (spec 2026-07-03).
  */
 export function RouteDateControls({
   defaultTrip = "",
@@ -36,11 +36,12 @@ export function RouteDateControls({
           Туда-обратно
         </button>
       </div>
-      <RangeCalendar
+      <DateRange
         defaultFrom={defaultFrom}
         defaultTo={defaultTo}
         inputClassName={inputClassName}
-        label={round ? "Туда — обратно" : "Даты вылета"}
+        labelFrom={round ? "Туда" : "Вылет с"}
+        labelTo={round ? "Обратно" : "По"}
       />
     </>
   );

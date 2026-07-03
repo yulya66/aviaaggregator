@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CityAutocomplete } from "@/components/city-autocomplete";
+import { DateRange } from "@/components/date-range";
 import { DealFeed, type FeedCard } from "@/components/deal-feed";
-import { RangeCalendar } from "@/components/range-calendar";
 import { RouteDateControls } from "@/components/route-date-controls";
 import { TpWidget } from "@/components/tp-widget";
 import {
@@ -430,7 +430,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         method="get"
         className="mt-5 flex flex-wrap items-end gap-3 rounded-card border border-line bg-card p-4"
       >
-        <RangeCalendar defaultFrom={from} defaultTo={to} inputClassName={inputCls} />
+        <DateRange defaultFrom={from} defaultTo={to} inputClassName={inputCls} />
         <button
           type="submit"
           className="rounded-lg bg-ink px-4 py-2 font-mono text-xs uppercase tracking-[0.18em] text-card transition hover:bg-accent"
