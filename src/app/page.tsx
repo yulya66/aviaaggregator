@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { CityAutocomplete } from "@/components/city-autocomplete";
-import { DateRange } from "@/components/date-range";
 import { DealFeed, type FeedCard } from "@/components/deal-feed";
+import { RangeCalendar } from "@/components/range-calendar";
+import { RouteDateControls } from "@/components/route-date-controls";
 import { TpWidget } from "@/components/tp-widget";
 import {
   cityCountryName,
@@ -15,7 +16,7 @@ import { buildAviasalesLink } from "@/lib/affiliate";
 import { formatDate } from "@/lib/format";
 import { dealId } from "@/lib/jobs/shared";
 import { createClient } from "@/lib/supabase/server";
-import { pricesCalendar, pricesLatest, type TpLatestPrice } from "@/lib/tp/client";
+import { pricesCalendar, pricesLatest, pricesRoundTrip, type TpLatestPrice } from "@/lib/tp/client";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +81,14 @@ function toCard(d: DealRowDb, prefix: string): FeedCard {
   };
 }
 
-type SearchState = { mode?: string; from?: string; to?: string; origin?: string; dest?: string };
+type SearchState = {
+  mode?: string;
+  from?: string;
+  to?: string;
+  origin?: string;
+  dest?: string;
+  trip?: string;
+};
 
 /** Params carried between tabs so each tab's entered search survives a switch (item 6). */
 function tabQuery(sp: SearchState, mode?: "route"): Record<string, string> {
@@ -89,6 +97,7 @@ function tabQuery(sp: SearchState, mode?: "route"): Record<string, string> {
   if (sp.dest) q.dest = sp.dest;
   if (sp.from) q.from = sp.from;
   if (sp.to) q.to = sp.to;
+  if (sp.trip) q.trip = sp.trip;
   if (mode) q.mode = mode;
   return q;
 }
@@ -130,6 +139,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     const dest = sp.dest || "";
     // «Куда» accepts a country: a 2-letter code is a country, 3 letters a city (spec 2026-06-19).
     const destIsCountry = dest.length === 2;
+    // Round-trip mode (туда-обратно) — city→city with both dates, live TP (spec 2026-07-03).
+    const isRound = sp.trip === "round";
     // Exact city→city route → date calendar; anything else → one cheapest fare per route.
     const exactRoute = Boolean(origin && dest) && !destIsCountry;
     let routeItems: FeedCard[] = [];
@@ -141,7 +152,24 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       const candidates: TpLatestPrice[] = [];
       const span = to ? Math.min(6, Math.max(1, monthSpan(from, to))) : 3;
 
-      if (destIsCountry) {
+      if (isRound) {
+        // Round-trip — live TP only, a concrete city→city with both dates (spec 2026-07-03 v1).
+        if (origin && dest && !destIsCountry && from && to) {
+          try {
+            candidates.push(
+              ...(await pricesRoundTrip({
+                origin,
+                destination: dest,
+                departDate: from,
+                returnDate: to,
+              })),
+            );
+          } catch {
+            // no data — the empty state handles it
+          }
+        }
+        // Otherwise leave empty; the empty state explains what round-trip needs.
+      } else if (destIsCountry) {
         // Country destination — live TP only. DB deals store city codes, not countries, so the
         // cache can't be mixed in (spec 2026-06-19). With an origin it's a single call; without
         // one, fan out across our home hubs (top-50 cheapest each) rather than the whole planet.
@@ -227,19 +255,21 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             destination: p.destination,
             route: `${cityName(p.origin)} → ${cityName(p.destination)}`,
             routeTitle: `${p.origin} → ${p.destination}`,
-            dateLabel: formatDate(p.depart_date),
+            dateLabel: p.return_date
+              ? `${formatDate(p.depart_date)} ↔ ${formatDate(p.return_date)}`
+              : formatDate(p.depart_date),
             departDate: p.depart_date,
             priceRub: p.value,
             airline: p.airline,
             transfers: p.number_of_changes,
-            priceNote: priceNoteFrom(today),
+            priceNote: p.return_date ? "туда-обратно" : priceNoteFrom(today),
             regionNote: cityCountryName(p.destination),
             abroad: !isDomestic(p.destination),
             deepLink: buildAviasalesLink({
               origin: p.origin,
               destination: p.destination,
               departDate: p.depart_date,
-              returnDate: null,
+              returnDate: p.return_date,
               marker,
               dealKind: "l2",
               dealId: id,
@@ -251,6 +281,26 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     const routeCap = routeItems.length
       ? Math.max(5000, Math.ceil(Math.max(...routeItems.map((i) => i.priceRub)) / 1000) * 1000)
       : 50000;
+
+    const emptyMsg = isRound
+      ? destIsCountry
+        ? `Для «туда-обратно» выберите город назначения, а не страну (${countryName(dest)}).`
+        : !origin || !dest
+          ? "Для «туда-обратно» укажите и «Откуда», и «Куда»."
+          : !to
+            ? "Для «туда-обратно» выберите даты — туда и обратно."
+            : `Туда-обратно ${cityName(origin)} ↔ ${cityName(dest)} — пока нет находок. Попробуйте другие даты.`
+      : `${
+          destIsCountry
+            ? origin
+              ? `Из города ${cityName(origin)} в любой город ${countryNameGenitive(dest)}`
+              : `В любой город ${countryNameGenitive(dest)}`
+            : exactRoute
+              ? `По маршруту ${cityName(origin)} → ${cityName(dest)}`
+              : origin
+                ? `Из города ${cityName(origin)}`
+                : `В город ${cityName(dest)}`
+        } пока нет находок. Попробуйте другие даты или режим «Я хоть куда».`;
 
     return (
       <main className="mx-auto max-w-3xl px-6 py-10">
@@ -287,7 +337,12 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
               popular={POPULAR_DESTINATIONS}
             />
           </div>
-          <DateRange defaultFrom={sp.from || ""} defaultTo={to} inputClassName={inputCls} />
+          <RouteDateControls
+            defaultTrip={sp.trip || ""}
+            defaultFrom={sp.from || ""}
+            defaultTo={to}
+            inputClassName={inputCls}
+          />
           <button
             type="submit"
             className="col-span-2 rounded-lg bg-ink py-2 font-mono text-xs uppercase tracking-[0.18em] text-card transition hover:bg-accent sm:col-span-4"
@@ -302,18 +357,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             только «Куда» — покажем рейсы туда откуда угодно.
           </p>
         ) : routeItems.length === 0 ? (
-          <p className="mt-10 text-muted">
-            {destIsCountry
-              ? origin
-                ? `Из города ${cityName(origin)} в любой город ${countryNameGenitive(dest)}`
-                : `В любой город ${countryNameGenitive(dest)}`
-              : exactRoute
-                ? `По маршруту ${cityName(origin)} → ${cityName(dest)}`
-                : origin
-                  ? `Из города ${cityName(origin)}`
-                  : `В город ${cityName(dest)}`}{" "}
-            пока нет находок. Попробуйте другие даты или режим «Я хоть куда».
-          </p>
+          <p className="mt-10 text-muted">{emptyMsg}</p>
         ) : (
           <DealFeed
             items={routeItems}
@@ -386,7 +430,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         method="get"
         className="mt-5 flex flex-wrap items-end gap-3 rounded-card border border-line bg-card p-4"
       >
-        <DateRange defaultFrom={from} defaultTo={to} inputClassName={inputCls} />
+        <RangeCalendar defaultFrom={from} defaultTo={to} inputClassName={inputCls} />
         <button
           type="submit"
           className="rounded-lg bg-ink px-4 py-2 font-mono text-xs uppercase tracking-[0.18em] text-card transition hover:bg-accent"

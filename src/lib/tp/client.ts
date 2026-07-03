@@ -35,6 +35,29 @@ export type PricesCalendarParams = {
   month: string;
 };
 
+export type PricesRoundTripParams = {
+  origin: string;
+  destination: string;
+  /** "YYYY-MM-DD" — outbound (туда). */
+  departDate: string;
+  /** "YYYY-MM-DD" — return (обратно). */
+  returnDate: string;
+  limit?: number;
+};
+
+/** One row from /aviasales/v3/prices_for_dates (subset of fields we use). */
+type TpForDatesEntry = {
+  origin?: string;
+  destination?: string;
+  departure_at?: string; // ISO datetime
+  return_at?: string | null;
+  price?: number;
+  value?: number;
+  airline?: string | null;
+  transfers?: number;
+  number_of_changes?: number;
+};
+
 /** One day in the /v1/prices/calendar response (keyed by departure date). */
 type TpCalendarEntry = {
   price?: number; // calendar uses `price`
@@ -147,6 +170,47 @@ export async function pricesCalendar({
       destination,
       depart_date: (e.departure_at ?? e.depart_date ?? date).slice(0, 10),
       return_date: null, // route search shows one-way fares
+      value: price,
+      airline: e.airline ?? null,
+      number_of_changes: e.transfers ?? e.number_of_changes ?? 0,
+    });
+  }
+  return out;
+}
+
+/**
+ * Cheapest round-trip fares for an exact origin→destination and exact touring
+ * dates (туда/обратно). Live-only — round-trip prices aren't cached (spec 2026-07-03).
+ */
+export async function pricesRoundTrip({
+  origin,
+  destination,
+  departDate,
+  returnDate,
+  limit = 30,
+}: PricesRoundTripParams): Promise<TpLatestPrice[]> {
+  const url = new URL(`${TP_BASE}/aviasales/v3/prices_for_dates`);
+  url.searchParams.set("origin", origin);
+  url.searchParams.set("destination", destination);
+  url.searchParams.set("departure_at", departDate);
+  url.searchParams.set("return_at", returnDate);
+  url.searchParams.set("one_way", "false");
+  url.searchParams.set("currency", "rub");
+  url.searchParams.set("sorting", "price");
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("token", tpToken());
+
+  const json = await fetchJson<{ success: boolean; data?: TpForDatesEntry[] }>(url.toString());
+
+  const out: TpLatestPrice[] = [];
+  for (const e of json.data ?? []) {
+    const price = e.price ?? e.value;
+    if (!price) continue;
+    out.push({
+      origin: e.origin ?? origin,
+      destination: e.destination ?? destination,
+      depart_date: (e.departure_at ?? departDate).slice(0, 10),
+      return_date: e.return_at ? e.return_at.slice(0, 10) : returnDate,
       value: price,
       airline: e.airline ?? null,
       number_of_changes: e.transfers ?? e.number_of_changes ?? 0,
