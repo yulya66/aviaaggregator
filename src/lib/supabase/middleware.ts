@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
+import { timeoutFetch } from "./timeout-fetch";
 
 export async function updateSession(request: NextRequest) {
   const response = NextResponse.next({ request });
@@ -9,6 +10,7 @@ export async function updateSession(request: NextRequest) {
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
+      global: { fetch: timeoutFetch },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -23,6 +25,11 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  await supabase.auth.getUser();
+  // Never let an unreachable Supabase hang every request — refresh best-effort.
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    // DB unreachable / timed out — proceed without a refreshed session.
+  }
   return response;
 }

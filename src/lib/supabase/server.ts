@@ -1,10 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
+import { timeoutFetch } from "./timeout-fetch";
 
 export async function createClient() {
   const cookieStore = await cookies();
   return createServerClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+    global: { fetch: timeoutFetch },
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -23,7 +25,8 @@ export async function createClient() {
 }
 
 export function createServiceRoleClient() {
-  // For cron jobs that bypass RLS. Never expose to the browser.
+  // For cron jobs that bypass RLS. Never expose to the browser. No fetch timeout here —
+  // cron batch writes can legitimately run longer than a request-path call.
   return createServerClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     cookies: { getAll: () => [], setAll: () => {} },
   });
