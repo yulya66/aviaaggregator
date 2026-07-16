@@ -219,6 +219,38 @@ export async function pricesRoundTrip({
   return out;
 }
 
+export type RoundTripSearch = {
+  items: TpLatestPrice[];
+  /** true when the exact-date cache was empty and these fares come from a month-wide fallback. */
+  approximate: boolean;
+};
+
+/**
+ * Round-trip search with a graceful fallback. Exotic routes (e.g. Екатеринбург↔Мале) rarely have
+ * the exact touring-date pair cached in the Data API, so on an empty exact result we widen the
+ * query to the whole month(s) — much likelier to hit the cache — and flag the fares as approximate
+ * so the UI can show the real found dates. Live flight_search would be better but is account-gated
+ * (see docs/research/tp-flight-search.md); the empty state links out to Aviasales for that case.
+ */
+export async function pricesRoundTripWithFallback(
+  params: PricesRoundTripParams,
+  deps: { roundTrip: (p: PricesRoundTripParams) => Promise<TpLatestPrice[]> } = {
+    roundTrip: pricesRoundTrip,
+  },
+): Promise<RoundTripSearch> {
+  const exact = await deps.roundTrip(params).catch(() => []);
+  if (exact.length) return { items: exact, approximate: false };
+
+  const month = await deps
+    .roundTrip({
+      ...params,
+      departDate: params.departDate.slice(0, 7), // "YYYY-MM" — whole outbound month
+      returnDate: params.returnDate.slice(0, 7), // "YYYY-MM" — whole return month
+    })
+    .catch(() => []);
+  return { items: month, approximate: month.length > 0 };
+}
+
 /** Injectable interfaces so job runners can be unit-tested without network. */
 export type TpClient = {
   pricesLatest(params: PricesLatestParams): Promise<TpLatestPrice[]>;

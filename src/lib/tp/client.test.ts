@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { pricesCheap, pricesLatest, pricesRoundTrip } from "./client";
+import {
+  pricesCheap,
+  pricesLatest,
+  pricesRoundTrip,
+  pricesRoundTripWithFallback,
+  type TpLatestPrice,
+} from "./client";
 
 beforeEach(() => {
   process.env.TP_API_KEY = "test-token";
@@ -189,5 +195,72 @@ describe("pricesRoundTrip", () => {
       returnDate: "2026-10-08",
     });
     expect(result).toEqual([]);
+  });
+});
+
+describe("pricesRoundTripWithFallback", () => {
+  const row = (departDate: string, returnDate: string, value: number): TpLatestPrice => ({
+    origin: "SVX",
+    destination: "MLE",
+    depart_date: departDate,
+    return_date: returnDate,
+    value,
+    airline: "EK",
+    number_of_changes: 1,
+  });
+
+  const params = {
+    origin: "SVX",
+    destination: "MLE",
+    departDate: "2026-08-05",
+    returnDate: "2026-08-19",
+  };
+
+  it("returns the exact-date results (approximate=false) without querying the month", async () => {
+    const roundTrip = vi.fn().mockResolvedValueOnce([row("2026-08-05", "2026-08-19", 60000)]);
+
+    const result = await pricesRoundTripWithFallback(params, { roundTrip });
+
+    expect(result).toEqual({ items: [row("2026-08-05", "2026-08-19", 60000)], approximate: false });
+    expect(roundTrip).toHaveBeenCalledTimes(1);
+    expect(roundTrip).toHaveBeenCalledWith(params);
+  });
+
+  it("falls back to a month-wide query (approximate=true) when the exact dates are empty", async () => {
+    const roundTrip = vi
+      .fn()
+      .mockResolvedValueOnce([]) // exact dates: nothing cached
+      .mockResolvedValueOnce([row("2026-08-08", "2026-08-22", 58000)]); // month: found nearby
+
+    const result = await pricesRoundTripWithFallback(params, { roundTrip });
+
+    expect(result).toEqual({ items: [row("2026-08-08", "2026-08-22", 58000)], approximate: true });
+    expect(roundTrip).toHaveBeenNthCalledWith(2, {
+      origin: "SVX",
+      destination: "MLE",
+      departDate: "2026-08",
+      returnDate: "2026-08",
+    });
+  });
+
+  it("swallows an error from the exact query and still tries the month", async () => {
+    const roundTrip = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce([row("2026-08-08", "2026-08-22", 58000)]);
+
+    const result = await pricesRoundTripWithFallback(params, { roundTrip });
+
+    expect(result.approximate).toBe(true);
+    expect(result.items).toHaveLength(1);
+  });
+
+  it("returns empty (approximate=false) when neither exact nor month has data", async () => {
+    const roundTrip = vi.fn().mockResolvedValue([]);
+
+    const result = await pricesRoundTripWithFallback(params, { roundTrip });
+
+    expect(result).toEqual({ items: [], approximate: false });
+    expect(roundTrip).toHaveBeenCalledTimes(2);
   });
 });

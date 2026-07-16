@@ -16,7 +16,12 @@ import { buildAviasalesLink } from "@/lib/affiliate";
 import { formatDate } from "@/lib/format";
 import { dealId } from "@/lib/jobs/shared";
 import { createClient } from "@/lib/supabase/server";
-import { pricesCalendar, pricesLatest, pricesRoundTrip, type TpLatestPrice } from "@/lib/tp/client";
+import {
+  pricesCalendar,
+  pricesLatest,
+  pricesRoundTripWithFallback,
+  type TpLatestPrice,
+} from "@/lib/tp/client";
 
 export const dynamic = "force-dynamic";
 
@@ -144,32 +149,78 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     // Exact city→city route → date calendar; anything else → one cheapest fare per route.
     const exactRoute = Boolean(origin && dest) && !destIsCountry;
     let routeItems: FeedCard[] = [];
-    if (origin || dest) {
+    let roundApproximate = false; // month-fallback fares (dates don't match the request exactly)
+    let roundBridgeUrl = ""; // Aviasales round-trip deeplink — the live-search bridge for empties
+    const marker = process.env.TP_PARTNER_MARKER ?? "";
+
+    if (isRound && origin && dest && !destIsCountry && from && to) {
+      // Round-trip (туда-обратно) — its own path. Prices come from the cached Data API, which
+      // rarely has the exact touring-date pair for rare routes (Екб↔Мале), so
+      // pricesRoundTripWithFallback widens to the whole month and flags the fares approximate.
+      // The one-way filter/dedup below is wrong for round-trip (it caps departures at the return
+      // date and merges return-date variants), so we build cards here. Whatever the cache lacks,
+      // the empty state links out to Aviasales' live search (the real-time flight_search engine is
+      // account-gated — see docs/research/tp-flight-search.md).
+      roundBridgeUrl = buildAviasalesLink({
+        origin,
+        destination: dest,
+        departDate: from,
+        returnDate: to,
+        marker,
+        dealKind: "l2",
+        dealId: dealId(origin, { destination: dest, depart_date: from } as TpLatestPrice),
+      });
+      const { items, approximate } = await pricesRoundTripWithFallback({
+        origin,
+        destination: dest,
+        departDate: from,
+        returnDate: to,
+      });
+      roundApproximate = approximate;
+      const best = new Map<string, TpLatestPrice>();
+      for (const p of items) {
+        if (!p.depart_date || p.depart_date < today) continue; // can't book past flights
+        const key = `${p.depart_date}_${p.return_date ?? ""}`;
+        const cur = best.get(key);
+        if (!cur || p.value < cur.value) best.set(key, p);
+      }
+      routeItems = [...best.values()]
+        .sort((a, b) => a.value - b.value)
+        .map((p) => {
+          const id = dealId(p.origin, p);
+          return {
+            key: `route-${id}-${p.return_date ?? ""}`,
+            origin: p.origin,
+            destination: p.destination,
+            route: `${cityName(p.origin)} → ${cityName(p.destination)}`,
+            routeTitle: `${p.origin} → ${p.destination}`,
+            dateLabel: `${formatDate(p.depart_date)} ↔ ${formatDate(p.return_date ?? to)}`,
+            departDate: p.depart_date,
+            priceRub: p.value,
+            airline: p.airline,
+            transfers: p.number_of_changes,
+            priceNote: roundApproximate ? "туда-обратно · примерные даты" : "туда-обратно",
+            regionNote: cityCountryName(p.destination),
+            abroad: !isDomestic(p.destination),
+            deepLink: buildAviasalesLink({
+              origin: p.origin,
+              destination: p.destination,
+              departDate: p.depart_date,
+              returnDate: p.return_date,
+              marker,
+              dealKind: "l2",
+              dealId: id,
+            }),
+          } satisfies FeedCard;
+        });
+    } else if (!isRound && (origin || dest)) {
       // One city is enough. Exact city→city → live calendar of dates for the route; one side
       // only → all flights from/into that city (prices/latest); a country → every city of that
       // country. City paths merge cached deals; country paths are live TP only (see below).
-      const marker = process.env.TP_PARTNER_MARKER ?? "";
       const candidates: TpLatestPrice[] = [];
       const span = to ? Math.min(6, Math.max(1, monthSpan(from, to))) : 3;
 
-      if (isRound) {
-        // Round-trip — live TP only, a concrete city→city with both dates (spec 2026-07-03 v1).
-        if (origin && dest && !destIsCountry && from && to) {
-          try {
-            candidates.push(
-              ...(await pricesRoundTrip({
-                origin,
-                destination: dest,
-                departDate: from,
-                returnDate: to,
-              })),
-            );
-          } catch {
-            // no data — the empty state handles it
-          }
-        }
-        // Otherwise leave empty; the empty state explains what round-trip needs.
-      } else if (destIsCountry) {
+      if (destIsCountry) {
         // Country destination — live TP only. DB deals store city codes, not countries, so the
         // cache can't be mixed in (spec 2026-06-19). With an origin it's a single call; without
         // one, fan out across our home hubs (top-50 cheapest each) rather than the whole planet.
@@ -357,14 +408,41 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             только «Куда» — покажем рейсы туда откуда угодно.
           </p>
         ) : routeItems.length === 0 ? (
-          <p className="mt-10 text-muted">{emptyMsg}</p>
+          <div className="mt-10">
+            <p className="text-muted">{emptyMsg}</p>
+            {roundBridgeUrl && (
+              <a
+                href={roundBridgeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-block rounded-lg bg-ink px-4 py-2 font-mono text-xs uppercase tracking-[0.18em] text-card transition hover:bg-accent"
+              >
+                Смотреть на Aviasales →
+              </a>
+            )}
+          </div>
         ) : (
-          <DealFeed
-            items={routeItems}
-            showHubFilters={false}
-            showAbroadFilter={false}
-            priceCap={routeCap}
-          />
+          <>
+            {roundApproximate && (
+              <p className="mt-6 text-sm text-muted">
+                Точных дат в кэше нет — показываем близкие варианты за месяц. За точными датами —{" "}
+                <a
+                  href={roundBridgeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  живой поиск на Aviasales →
+                </a>
+              </p>
+            )}
+            <DealFeed
+              items={routeItems}
+              showHubFilters={false}
+              showAbroadFilter={false}
+              priceCap={routeCap}
+            />
+          </>
         )}
 
         <TpWidget />
