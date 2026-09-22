@@ -5,11 +5,11 @@ import { DealFeed, type FeedCard } from "@/components/deal-feed";
 import { RouteDateControls } from "@/components/route-date-controls";
 import { TpWidget } from "@/components/tp-widget";
 import {
-  cityCountryName,
   cityName,
   countryName,
   countryNameGenitive,
   isDomestic,
+  routeCountries,
 } from "@/data/airports";
 import { ALL_HUB_CODES, HOME_HUB_CODES, ORIGIN_OPTIONS, POPULAR_DESTINATIONS } from "@/data/hubs";
 import { buildAviasalesLink } from "@/lib/affiliate";
@@ -80,7 +80,7 @@ function toCard(d: DealRowDb, prefix: string): FeedCard {
     transfers: d.transfers,
     deepLink: d.deep_link,
     priceNote: priceNoteFrom(d.last_seen_at),
-    regionNote: cityCountryName(d.destination_iata),
+    regionNote: routeCountries(d.origin_iata, d.destination_iata),
     abroad: !isDomestic(d.destination_iata),
     ...(d.discount_pct != null ? { badge: `−${Math.round(Number(d.discount_pct))}%` } : {}),
   };
@@ -200,7 +200,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             airline: p.airline,
             transfers: p.number_of_changes,
             priceNote: roundApproximate ? "туда-обратно · примерные даты" : "туда-обратно",
-            regionNote: cityCountryName(p.destination),
+            regionNote: routeCountries(p.origin, p.destination),
             abroad: !isDomestic(p.destination),
             deepLink: buildAviasalesLink({
               origin: p.origin,
@@ -314,7 +314,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             airline: p.airline,
             transfers: p.number_of_changes,
             priceNote: p.return_date ? "туда-обратно" : priceNoteFrom(today),
-            regionNote: cityCountryName(p.destination),
+            regionNote: routeCountries(p.origin, p.destination),
             abroad: !isDomestic(p.destination),
             deepLink: buildAviasalesLink({
               origin: p.origin,

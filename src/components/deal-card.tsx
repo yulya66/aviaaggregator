@@ -12,7 +12,7 @@ type DealCardProps = {
   badge?: string;
   trip?: TripLeg; // when set, shows the "+ в поездку" toggle
   priceNote?: string; // e.g. "цена от 07.06" — when the cached fare was last seen
-  regionNote?: string; // destination country, e.g. "Турция" — shown for reference
+  regionNote?: string; // route countries, e.g. "Россия → ОАЭ" — shown for reference
 };
 
 const RUB = new Intl.NumberFormat("ru-RU", {
