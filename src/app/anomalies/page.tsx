@@ -1,21 +1,36 @@
+import Link from "next/link";
+import { AnomalyDateFilter } from "@/components/anomaly-date-filter";
 import { AnomalyFeed, type AnomalyItem } from "@/components/anomaly-feed";
-import { cityName } from "@/data/airports";
+import { cityName, routeCountries } from "@/data/airports";
+import { anomalyWindow } from "@/lib/anomaly-window";
 import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function AnomaliesPage() {
+type AnomalySearch = { from?: string; to?: string };
+
+export default async function AnomaliesPage({
+  searchParams,
+}: {
+  searchParams: Promise<AnomalySearch>;
+}) {
+  const sp = await searchParams;
+  const today = new Date().toISOString().slice(0, 10);
+  const range = anomalyWindow({ from: sp.from, to: sp.to, today });
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("anomalies")
     .select(
       "id, origin_iata, destination_iata, depart_date, price_rub, median_price_rub, airline, transfers, deep_link, discount_pct",
     )
     .eq("is_active", true)
-    .order("discount_pct", { ascending: false })
-    .limit(100);
+    .gte("depart_date", range.gte);
+
+  if (range.lte) query = query.lte("depart_date", range.lte);
+
+  const { data, error } = await query.order("discount_pct", { ascending: false }).limit(100);
 
   if (error) {
     return (
@@ -42,6 +57,7 @@ export default async function AnomaliesPage() {
       transfers: a.transfers,
       deepLink: a.deep_link,
       badge: `−${discount}% (обычно ${a.median_price_rub} ₽)`,
+      regionNote: routeCountries(a.origin_iata, a.destination_iata),
       trip: {
         id: `${a.origin_iata}_${a.destination_iata}_${a.depart_date}`,
         origin: a.origin_iata,
@@ -67,8 +83,19 @@ export default async function AnomaliesPage() {
         Цены, рухнувшие заметно ниже своей медианы. Красная рамка — скидка ≥ 50%.
       </p>
 
+      <AnomalyDateFilter from={range.from} to={range.to} today={today} />
+
       {items.length === 0 ? (
-        <p className="mt-10 text-muted">Аномалий пока нет — движок копит снапшоты ~14 дней.</p>
+        range.active ? (
+          <p className="mt-10 text-muted">
+            На выбранные даты аномалий нет.{" "}
+            <Link href="/anomalies" className="underline">
+              Показать все
+            </Link>
+          </p>
+        ) : (
+          <p className="mt-10 text-muted">Аномалий пока нет — движок копит снапшоты ~14 дней.</p>
+        )
       ) : (
         <AnomalyFeed items={items} />
       )}
