@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { chipClass } from "./chip";
 import { DateRange } from "./date-range";
 
 /**
@@ -20,19 +21,15 @@ export function RouteDateControls({
   inputClassName?: string;
 }) {
   const [round, setRound] = useState(defaultTrip === "round");
-  const btn = (active: boolean) =>
-    `rounded-full px-3 py-1.5 font-mono text-[0.66rem] uppercase tracking-wider transition ${
-      active ? "bg-ink text-card" : "border border-line text-muted hover:border-ink hover:text-ink"
-    }`;
 
   return (
     <>
       <div className="col-span-2 flex gap-2 sm:col-span-4">
         <input type="hidden" name="trip" value={round ? "round" : ""} />
-        <button type="button" onClick={() => setRound(false)} className={btn(!round)}>
+        <button type="button" onClick={() => setRound(false)} className={chipClass(!round)}>
           В одну сторону
         </button>
-        <button type="button" onClick={() => setRound(true)} className={btn(round)}>
+        <button type="button" onClick={() => setRound(true)} className={chipClass(round)}>
           Туда-обратно
         </button>
       </div>

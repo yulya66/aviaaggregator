@@ -1,14 +1,10 @@
 import Link from "next/link";
 import { presetWindow } from "@/lib/anomaly-window";
+import { chipClass } from "./chip";
 import { DateRange } from "./date-range";
 
 const inputCls =
   "rounded-lg border border-line bg-paper px-3 py-2 font-mono text-sm text-ink outline-none focus:border-accent";
-
-const chip = (active: boolean) =>
-  `rounded-full px-3 py-1.5 font-mono text-[0.66rem] uppercase tracking-wider transition ${
-    active ? "bg-ink text-card" : "border border-line text-muted hover:border-ink hover:text-ink"
-  }`;
 
 const PRESETS = [
   { months: 1, label: "Месяц" },
@@ -56,13 +52,18 @@ export function AnomalyDateFilter({
             <Link
               key={preset.months}
               href={`/anomalies?from=${range.from}&to=${range.to}`}
-              className={chip(active)}
+              className={chipClass(active)}
+              aria-current={active ? "page" : undefined}
             >
               {preset.label}
             </Link>
           );
         })}
-        <Link href="/anomalies" className={chip(!from && !to)}>
+        <Link
+          href="/anomalies"
+          className={chipClass(!from && !to)}
+          aria-current={!from && !to ? "page" : undefined}
+        >
           Все даты
         </Link>
       </div>

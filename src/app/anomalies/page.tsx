@@ -3,7 +3,7 @@ import { AnomalyDateFilter } from "@/components/anomaly-date-filter";
 import { AnomalyFeed, type AnomalyItem } from "@/components/anomaly-feed";
 import { cityName, routeCountries } from "@/data/airports";
 import { anomalyWindow } from "@/lib/anomaly-window";
-import { formatDate } from "@/lib/format";
+import { formatDate, todayIso } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export default async function AnomaliesPage({
   searchParams: Promise<AnomalySearch>;
 }) {
   const sp = await searchParams;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   const range = anomalyWindow({ from: sp.from, to: sp.to, today });
   const supabase = await createClient();
 

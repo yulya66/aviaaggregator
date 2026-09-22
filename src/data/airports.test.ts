@@ -8,6 +8,8 @@ import {
   isDomestic,
   routeCountries,
 } from "./airports";
+import { CITY_COUNTRY } from "./city-country";
+import { COUNTRIES } from "./countries";
 
 describe("airports country accessors", () => {
   it("maps home hubs to RU", () => {
@@ -57,5 +59,17 @@ describe("routeCountries", () => {
 
   it("отдаёт пустую строку, когда обе стороны неизвестны", () => {
     expect(routeCountries("ZZZ", "QQQ")).toBe("");
+  });
+
+  it("схлопывает одинаковый код города с обеих сторон", () => {
+    expect(routeCountries("SVX", "SVX")).toBe("Россия");
+  });
+});
+
+describe("согласованность справочников", () => {
+  it("каждый код страны из справочника городов есть в справочнике стран", () => {
+    const codes = [...new Set(Object.values(CITY_COUNTRY))];
+    const missing = codes.filter((code) => !(code in COUNTRIES));
+    expect(missing).toEqual([]);
   });
 });
