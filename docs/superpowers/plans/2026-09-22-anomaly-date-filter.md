@@ -238,7 +238,7 @@ describe("routeCountries", () => {
   });
 
   it("отдаёт пустую строку, когда обе стороны неизвестны", () => {
-    expect(routeCountries("ZZZ", "YYY")).toBe("");
+    expect(routeCountries("ZZZ", "QQQ")).toBe("");
   });
 });
 ```
