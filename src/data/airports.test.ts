@@ -6,6 +6,7 @@ import {
   countryName,
   countryNameGenitive,
   isDomestic,
+  routeCountries,
 } from "./airports";
 
 describe("airports country accessors", () => {
@@ -36,5 +37,25 @@ describe("airports country accessors", () => {
     expect(cityCountryName("ZZZ")).toBe("");
     expect(countryName("ZZ")).toBe("ZZ");
     expect(cityName("ZZZ")).toBe("ZZZ");
+  });
+});
+
+describe("routeCountries", () => {
+  it("показывает обе страны, когда они разные", () => {
+    expect(routeCountries("SVX", "DXB")).toBe("Россия → ОАЭ");
+    expect(routeCountries("SVX", "IST")).toBe("Россия → Турция");
+  });
+
+  it("не дублирует одну и ту же страну", () => {
+    expect(routeCountries("SVX", "LED")).toBe("Россия");
+  });
+
+  it("опускает сторону с неизвестным кодом", () => {
+    expect(routeCountries("SVX", "ZZZ")).toBe("Россия");
+    expect(routeCountries("ZZZ", "IST")).toBe("Турция");
+  });
+
+  it("отдаёт пустую строку, когда обе стороны неизвестны", () => {
+    expect(routeCountries("ZZZ", "QQQ")).toBe("");
   });
 });

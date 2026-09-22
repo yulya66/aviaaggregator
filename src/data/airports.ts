@@ -32,3 +32,15 @@ export function cityCountryName(iata: string): string {
 export function isDomestic(iata: string, home = "RU"): boolean {
   return CITY_COUNTRY[iata] === home;
 }
+
+/**
+ * Пара стран маршрута для подписи в карточке: «Россия → ОАЭ». Одна и та же страна
+ * пишется один раз, сторона с неизвестным кодом опускается, обе неизвестные дают
+ * пустую строку — тогда карточка не рисует ни разделителя, ни пробела.
+ */
+export function routeCountries(origin: string, destination: string): string {
+  const from = cityCountryName(origin);
+  const to = cityCountryName(destination);
+  if (from && to) return from === to ? from : `${from} → ${to}`;
+  return from || to;
+}
