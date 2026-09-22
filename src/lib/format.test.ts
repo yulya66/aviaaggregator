@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, todayIso } from "./format";
+import { todayIso } from "./format";
 
 describe("todayIso", () => {
   it("отдаёт местную дату Екатеринбурга, а не UTC", () => {
