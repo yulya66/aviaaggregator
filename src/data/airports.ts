@@ -34,9 +34,9 @@ export function isDomestic(iata: string, home = "RU"): boolean {
 }
 
 /**
- * Пара стран маршрута для подписи в карточке: «Россия → ОАЭ». Одна и та же страна
- * пишется один раз, сторона с неизвестным кодом опускается, обе неизвестные дают
- * пустую строку — тогда карточка не рисует ни разделителя, ни пробела.
+ * Route countries for the card meta line: "Россия → ОАЭ". The same country is
+ * written once, a side with an unknown code is dropped, and two unknown sides
+ * give "" — then the card renders no separator and no stray space.
  */
 export function routeCountries(origin: string, destination: string): string {
   const from = cityCountryName(origin);

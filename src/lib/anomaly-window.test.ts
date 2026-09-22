@@ -4,7 +4,7 @@ import { anomalyWindow, presetWindow } from "./anomaly-window";
 const today = "2026-09-22";
 
 describe("anomalyWindow", () => {
-  it("без параметров: нижняя граница — сегодня, верх открыт, фильтр не задан", () => {
+  it("no params: lower bound is today, upper is open, filter is unset", () => {
     expect(anomalyWindow({ today })).toEqual({
       gte: today,
       lte: null,
@@ -14,7 +14,7 @@ describe("anomalyWindow", () => {
     });
   });
 
-  it("берёт «С», когда он в будущем", () => {
+  it("takes «С» when it's in the future", () => {
     expect(anomalyWindow({ from: "2026-10-01", today })).toEqual({
       gte: "2026-10-01",
       lte: null,
@@ -24,14 +24,14 @@ describe("anomalyWindow", () => {
     });
   });
 
-  it("не пускает «С» в прошлое, но сохраняет выбор пользователя в поле", () => {
+  it("keeps «С» from going into the past, but preserves the user's input in the field", () => {
     const w = anomalyWindow({ from: "2026-01-01", today });
     expect(w.gte).toBe(today);
     expect(w.from).toBe("2026-01-01");
     expect(w.active).toBe(true);
   });
 
-  it("ставит верхнюю границу из «По»", () => {
+  it("sets the upper bound from «По»", () => {
     expect(anomalyWindow({ to: "2026-10-31", today })).toEqual({
       gte: today,
       lte: "2026-10-31",
@@ -41,7 +41,7 @@ describe("anomalyWindow", () => {
     });
   });
 
-  it("не исправляет «По» раньше «С» — список просто окажется пустым", () => {
+  it("doesn't correct «По» earlier than «С» — the list just ends up empty", () => {
     expect(anomalyWindow({ from: "2026-10-10", to: "2026-10-01", today })).toEqual({
       gte: "2026-10-10",
       lte: "2026-10-01",
@@ -51,7 +51,7 @@ describe("anomalyWindow", () => {
     });
   });
 
-  it("игнорирует мусор вместо даты", () => {
+  it("ignores garbage in place of a date", () => {
     for (const bad of ["2026-13-40", "2026-02-31", "вчера", "", "20261001"]) {
       expect(anomalyWindow({ from: bad, to: bad, today })).toEqual({
         gte: today,
@@ -63,7 +63,7 @@ describe("anomalyWindow", () => {
     }
   });
 
-  it("«По» в прошлом без «С»: нижняя граница всё равно сегодня", () => {
+  it("«По» in the past without «С»: the lower bound is still today", () => {
     expect(anomalyWindow({ to: "2020-01-01", today })).toEqual({
       gte: today,
       lte: "2020-01-01",
@@ -75,21 +75,21 @@ describe("anomalyWindow", () => {
 });
 
 describe("presetWindow", () => {
-  it("считает окна на 1, 3 и 6 месяцев от сегодня", () => {
+  it("computes windows of 1, 3 and 6 months from today", () => {
     expect(presetWindow(1, "2026-09-22")).toEqual({ from: "2026-09-22", to: "2026-10-22" });
     expect(presetWindow(3, "2026-09-22")).toEqual({ from: "2026-09-22", to: "2026-12-22" });
     expect(presetWindow(6, "2026-09-22")).toEqual({ from: "2026-09-22", to: "2027-03-22" });
   });
 
-  it("не перескакивает через месяц, когда сегодня 31 число", () => {
+  it("doesn't skip a month when today is the 31st", () => {
     expect(presetWindow(1, "2026-03-31")).toEqual({ from: "2026-03-31", to: "2026-04-30" });
   });
 
-  it("зажимает 29 января по последнему дню февраля в невисокосный год", () => {
+  it("clamps January 29 to the last day of February in a non-leap year", () => {
     expect(presetWindow(1, "2026-01-29")).toEqual({ from: "2026-01-29", to: "2026-02-28" });
   });
 
-  it("сохраняет 29 февраля в високосный год", () => {
+  it("keeps February 29 in a leap year", () => {
     expect(presetWindow(1, "2028-01-29")).toEqual({ from: "2028-01-29", to: "2028-02-29" });
   });
 });

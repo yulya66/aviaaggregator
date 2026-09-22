@@ -1,14 +1,14 @@
-/** Границы запроса к таблице `anomalies` плюс очищенные значения для полей формы. */
+/** Query bounds for the `anomalies` table plus cleaned values for the form fields. */
 export type DateWindow = {
-  /** Нижняя граница `depart_date` — никогда не раньше сегодняшнего дня. */
+  /** Lower bound of `depart_date` — never earlier than today. */
   gte: string;
-  /** Верхняя граница `depart_date` или null, когда «По» не заполнено. */
+  /** Upper bound of `depart_date`, or null when «По» is empty. */
   lte: string | null;
-  /** Значение для поля «Вылет с» ("" — параметра не было или он не прошёл проверку). */
+  /** Value for the «Вылет с» field ("" — the param was absent or invalid). */
   from: string;
-  /** Значение для поля «По». */
+  /** Value for the «По» field. */
   to: string;
-  /** Задан ли фильтр — от этого зависит только текст пустого состояния. */
+  /** Whether the filter is set — only affects the empty-state text. */
   active: boolean;
 };
 
@@ -25,9 +25,9 @@ function cleanDate(value: string | undefined): string {
 }
 
 /**
- * Параметры адреса → границы запроса. Прошедшие вылеты не показываются никогда:
- * нижняя граница — максимум из «С» и сегодняшнего дня. «По» раньше «С» намеренно
- * не исправляется, пользователь увидит пустой список и подсказку.
+ * URL params → query bounds. Past departures are never shown: the lower bound
+ * is the max of «С» and today. «По» earlier than «С» is intentionally left
+ * uncorrected — the user will see an empty list and the hint.
  */
 export function anomalyWindow({
   from,
@@ -50,9 +50,9 @@ export function anomalyWindow({
 }
 
 /**
- * Окно пресета: от сегодня на `months` месяцев вперёд. Если в целевом месяце нет
- * такого числа (31 марта + 1 месяц), берётся последний день месяца, а не переход
- * на следующий.
+ * Preset window: `months` months ahead of today. If the target month has no
+ * such day (March 31 + 1 month), it clamps to the last day of the month
+ * instead of rolling into the next one.
  */
 export function presetWindow(months: number, today: string): { from: string; to: string } {
   const [y, m, d] = today.split("-").map(Number);

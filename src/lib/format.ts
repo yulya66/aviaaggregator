@@ -5,10 +5,10 @@ export function formatDate(date: string): string {
 }
 
 /**
- * Сегодняшняя дата в часовом поясе пользователя как "ГГГГ-ММ-ДД". Нужна вместо
- * `toISOString().slice(0, 10)`: та отдаёт дату по UTC, и в Екатеринбурге (UTC+5)
- * с полуночи до пяти утра она отстаёт на сутки. Параметры принимаются явно,
- * чтобы функцию можно было проверить тестами без подмены системного времени.
+ * Today's date in the user's timezone as "YYYY-MM-DD". Replaces
+ * `toISOString().slice(0, 10)`, which returns the UTC date — in Yekaterinburg
+ * (UTC+5) that lags a day behind between midnight and 5am. Both arguments are
+ * explicit so the function can be tested without faking the system clock.
  */
 export function todayIso(now: Date = new Date(), timeZone = "Asia/Yekaterinburg"): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone }).format(now);

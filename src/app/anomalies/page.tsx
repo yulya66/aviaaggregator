@@ -36,7 +36,8 @@ export default async function AnomaliesPage({
     return (
       <main className="mx-auto max-w-3xl px-6 py-12">
         <h1 className="font-display text-3xl font-extrabold">Аномалии</h1>
-        <p className="mt-4 text-muted">Не удалось загрузить, обновите через минуту.</p>
+        <AnomalyDateFilter from={range.from} to={range.to} today={today} />
+        <p className="mt-6 text-muted">Не удалось загрузить, обновите через минуту.</p>
       </main>
     );
   }

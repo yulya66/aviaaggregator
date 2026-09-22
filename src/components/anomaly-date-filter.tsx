@@ -13,10 +13,10 @@ const PRESETS = [
 ];
 
 /**
- * Период «с / по» для /anomalies. Состояние живёт в адресе: форма уходит методом GET,
- * пресеты — обычные ссылки, поэтому DateRange не нужно переделывать под внешнее
- * управление. `key` пересоздаёт поля при переходе по пресету, иначе React сохранит
- * прежнее внутреннее состояние инпутов.
+ * The «с / по» period for /anomalies. State lives in the URL: the form submits via
+ * GET and the presets are plain links, so DateRange needs no rework for external
+ * control. `key` recreates the inputs when a preset is followed — without it React
+ * would keep their previous internal state.
  */
 export function AnomalyDateFilter({
   from,
@@ -53,7 +53,7 @@ export function AnomalyDateFilter({
               key={preset.months}
               href={`/anomalies?from=${range.from}&to=${range.to}`}
               className={chipClass(active)}
-              aria-current={active ? "page" : undefined}
+              aria-current={active ? "true" : undefined}
             >
               {preset.label}
             </Link>
@@ -62,7 +62,7 @@ export function AnomalyDateFilter({
         <Link
           href="/anomalies"
           className={chipClass(!from && !to)}
-          aria-current={!from && !to ? "page" : undefined}
+          aria-current={!from && !to ? "true" : undefined}
         >
           Все даты
         </Link>

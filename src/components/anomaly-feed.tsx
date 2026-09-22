@@ -18,7 +18,7 @@ export type AnomalyItem = {
   transfers: number;
   deepLink: string;
   badge: string;
-  regionNote?: string; // «Россия → ОАЭ» — страны маршрута, как в ленте на главной
+  regionNote?: string; // route countries, e.g. "Россия → ОАЭ" — same as the home feed
   trip: TripLeg;
 };
 
