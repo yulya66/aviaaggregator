@@ -18,6 +18,7 @@ export type AnomalyItem = {
   transfers: number;
   deepLink: string;
   badge: string;
+  regionNote?: string; // route countries, e.g. "Россия → ОАЭ" — same as the home feed
   trip: TripLeg;
 };
 
@@ -55,6 +56,7 @@ export function AnomalyFeed({ items }: { items: AnomalyItem[] }) {
               transfers={a.transfers}
               deepLink={a.deepLink}
               badge={a.badge}
+              regionNote={a.regionNote}
               trip={a.trip}
             />
           </div>

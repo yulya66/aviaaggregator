@@ -32,3 +32,15 @@ export function cityCountryName(iata: string): string {
 export function isDomestic(iata: string, home = "RU"): boolean {
   return CITY_COUNTRY[iata] === home;
 }
+
+/**
+ * Route countries for the card meta line: "Россия → ОАЭ". The same country is
+ * written once, a side with an unknown code is dropped, and two unknown sides
+ * give "" — then the card renders no separator and no stray space.
+ */
+export function routeCountries(origin: string, destination: string): string {
+  const from = cityCountryName(origin);
+  const to = cityCountryName(destination);
+  if (from && to) return from === to ? from : `${from} → ${to}`;
+  return from || to;
+}

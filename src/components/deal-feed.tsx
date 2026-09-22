@@ -20,7 +20,7 @@ export type FeedCard = {
   deepLink: string;
   badge?: string;
   priceNote?: string; // "цена от 07.06"
-  regionNote?: string; // destination country, e.g. "Турция" — shown for reference
+  regionNote?: string; // route countries, e.g. "Россия → ОАЭ" — shown for reference
   abroad?: boolean; // destination outside Russia — computed server-side to keep the client lean
 };
 

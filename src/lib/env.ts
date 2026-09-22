@@ -26,10 +26,7 @@ export const env = Object.freeze(
   Object.defineProperties(
     {} as Record<Key, string>,
     Object.fromEntries(
-      REQUIRED_KEYS.map((key) => [
-        key,
-        { enumerable: true, get: () => read(key) },
-      ]),
+      REQUIRED_KEYS.map((key) => [key, { enumerable: true, get: () => read(key) }]),
     ),
   ),
 );
