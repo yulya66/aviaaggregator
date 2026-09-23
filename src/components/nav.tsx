@@ -27,7 +27,7 @@ export async function Nav() {
             Лента
           </Link>
           <Link href="/anomalies" className="transition hover:text-accent">
-            Аномалии
+            Шок-цены
           </Link>
           <TripBadge />
           {user ? (

@@ -130,6 +130,57 @@ function Tabs({ active, sp }: { active: "feed" | "route"; sp: SearchState }) {
   );
 }
 
+// The header, tabs and date form of the discovery feed. Extracted so the error branch
+// can render them too: a failed query used to replace the whole page with a one-line
+// message, throwing away the dates the visitor had just picked.
+function FeedShell({
+  sp,
+  from,
+  to,
+  children,
+}: {
+  sp: SearchState;
+  from: string;
+  to: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <main className="mx-auto max-w-3xl px-6 py-10">
+      <p className="kicker">Рейсы из ваших городов</p>
+      <h1 className="mt-2 font-display text-4xl font-extrabold leading-[1.04] tracking-tight sm:text-5xl">
+        Топ-цены
+      </h1>
+      <Tabs active="feed" sp={sp} />
+      <p className="mt-4 max-w-md text-sm text-muted">
+        Туда и обратно, по всем хабам. Выберите даты и двигайте ползунок, чтобы найти самое горячее.
+      </p>
+
+      <form
+        method="get"
+        className="mt-5 flex flex-wrap items-end gap-3 rounded-card border border-line bg-card p-4"
+      >
+        <DateRange defaultFrom={from} defaultTo={to} inputClassName={inputCls} />
+        <button
+          type="submit"
+          className="rounded-lg bg-ink px-4 py-2 font-mono text-xs uppercase tracking-[0.18em] text-card transition hover:bg-accent"
+        >
+          Показать
+        </button>
+        {(sp.from || sp.to) && (
+          <a
+            href="/"
+            className="self-center font-mono text-[0.7rem] uppercase tracking-wider text-accent hover:underline"
+          >
+            сброс
+          </a>
+        )}
+      </form>
+
+      {children}
+    </main>
+  );
+}
+
 export default async function HomePage({ searchParams }: { searchParams: Promise<SearchState> }) {
   const sp = await searchParams;
   const supabase = await createClient();
@@ -476,10 +527,9 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
   if (hubResults.some((r) => r.error) || anomaliesRes.error) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
-        <h1 className="font-display text-3xl font-extrabold">Лента</h1>
-        <p className="mt-4 text-muted">Не удалось загрузить, обновите через минуту.</p>
-      </main>
+      <FeedShell sp={sp} from={from} to={to}>
+        <p className="mt-10 text-muted">Не удалось загрузить, обновите через минуту.</p>
+      </FeedShell>
     );
   }
 
@@ -494,37 +544,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   ].sort((x, y) => x.priceRub - y.priceRub);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
-      <p className="kicker">Рейсы из ваших городов</p>
-      <h1 className="mt-2 font-display text-4xl font-extrabold leading-[1.04] tracking-tight sm:text-5xl">
-        Топ-цены
-      </h1>
-      <Tabs active="feed" sp={sp} />
-      <p className="mt-4 max-w-md text-sm text-muted">
-        Туда и обратно, по всем хабам. Выберите даты и двигайте ползунок, чтобы найти самое горячее.
-      </p>
-
-      <form
-        method="get"
-        className="mt-5 flex flex-wrap items-end gap-3 rounded-card border border-line bg-card p-4"
-      >
-        <DateRange defaultFrom={from} defaultTo={to} inputClassName={inputCls} />
-        <button
-          type="submit"
-          className="rounded-lg bg-ink px-4 py-2 font-mono text-xs uppercase tracking-[0.18em] text-card transition hover:bg-accent"
-        >
-          Показать
-        </button>
-        {(sp.from || sp.to) && (
-          <a
-            href="/"
-            className="self-center font-mono text-[0.7rem] uppercase tracking-wider text-accent hover:underline"
-          >
-            сброс
-          </a>
-        )}
-      </form>
-
+    <FeedShell sp={sp} from={from} to={to}>
       {items.length === 0 ? (
         <p className="mt-10 text-muted">
           Нет рейсов в этом диапазоне дат. Расширьте даты или сбросьте фильтр.
@@ -532,6 +552,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       ) : (
         <DealFeed items={items} />
       )}
-    </main>
+    </FeedShell>
   );
 }
