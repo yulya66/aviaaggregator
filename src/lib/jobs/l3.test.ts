@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
+import { todayIso } from "@/lib/format";
 import type { TpClient } from "@/lib/tp/client";
 import { runPollL3, TRANSIT_HUBS } from "./l3";
 
@@ -129,6 +130,15 @@ describe("runPollL3", () => {
 
     expect(update).toHaveBeenCalledWith({ is_active: false });
     expect(eq).toHaveBeenCalledWith("is_active", true);
-    expect(lt).toHaveBeenCalledWith("depart_date", expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+    // Same cutoff the page applies, so exactly the invisible rows get retired.
+    expect(lt).toHaveBeenCalledWith("depart_date", todayIso());
+  });
+
+  it("fails loudly when the sweep is rejected", async () => {
+    const { db, lt } = makeFakeDb([]);
+    lt.mockResolvedValue({ error: { message: "permission denied" } });
+    const tp: TpClient = { pricesLatest: vi.fn().mockResolvedValue([]) };
+
+    await expect(runPollL3(db, tp, "555", 0)).rejects.toThrow("anomalies sweep failed");
   });
 });

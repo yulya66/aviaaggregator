@@ -112,14 +112,15 @@ export async function runPollL3(
   // writes is_active = true, so without this sweep they pile up forever. Mirrors the
   // staleness sweep L2 runs for deals. The is_active filter keeps the update off rows
   // that are already retired, otherwise every run would rewrite the whole history and
-  // bloat the table with dead tuples. The cutoff is UTC to match the migration that did
-  // the one-off cleanup; depart_date is a plain date, so a local-time cutoff would retire
-  // still-valid same-day anomalies during the Yekaterinburg evening.
-  await supabase
+  // bloat the table with dead tuples. todayIso() is left on its default timezone so the
+  // cutoff matches the one /anomalies applies via anomalyWindow(): exactly the rows the
+  // page can no longer show get retired, no more and no less.
+  const { error: sweepError } = await supabase
     .from("anomalies")
     .update({ is_active: false })
     .eq("is_active", true)
-    .lt("depart_date", todayIso(new Date(), "UTC"));
+    .lt("depart_date", todayIso());
+  if (sweepError) throw new Error(`anomalies sweep failed: ${JSON.stringify(sweepError)}`);
 
   return {
     api_calls: 1,

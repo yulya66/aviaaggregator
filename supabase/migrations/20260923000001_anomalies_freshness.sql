@@ -11,7 +11,9 @@ create index if not exists anomalies_active_depart_idx
   where is_active;
 
 -- One-off sweep of the backlog. L3 keeps it clean from now on (see src/lib/jobs/l3.ts).
+-- The cutoff is the Yekaterinburg date, the same one /anomalies uses for its lower
+-- bound, so this retires exactly the rows the page can no longer show.
 update public.anomalies
    set is_active = false
  where is_active
-   and depart_date < (now() at time zone 'utc')::date;
+   and depart_date < (now() at time zone 'Asia/Yekaterinburg')::date;

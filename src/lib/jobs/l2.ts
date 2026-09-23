@@ -71,11 +71,12 @@ export async function runPollL2(
   // update off rows that are already retired: without it every run rewrites the whole
   // history and bloats the table with dead tuples.
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-  await supabase
+  const { error: sweepError } = await supabase
     .from("deals")
     .update({ is_active: false })
     .eq("is_active", true)
     .lt("last_seen_at", cutoff);
+  if (sweepError) throw new Error(`deals sweep failed: ${JSON.stringify(sweepError)}`);
 
   return { api_calls: apiCalls, rows_inserted: deals.length };
 }

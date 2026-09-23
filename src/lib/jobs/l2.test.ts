@@ -49,7 +49,7 @@ describe("runPollL2", () => {
     expect(result.rows_inserted).toBeGreaterThan(0);
   });
 
-  it("deactivates stale deals via update().lt(last_seen_at)", async () => {
+  it("deactivates stale deals via update().eq(is_active).lt(last_seen_at)", async () => {
     const { db, update, eq, lt } = makeFakeDb();
     const tp: TpClient = { pricesLatest: vi.fn().mockResolvedValue([]) };
 
@@ -58,5 +58,13 @@ describe("runPollL2", () => {
     expect(update).toHaveBeenCalledWith({ is_active: false });
     expect(eq).toHaveBeenCalledWith("is_active", true);
     expect(lt).toHaveBeenCalledWith("last_seen_at", expect.any(String));
+  });
+
+  it("fails loudly when the sweep is rejected", async () => {
+    const { db, lt } = makeFakeDb();
+    lt.mockResolvedValue({ error: { message: "permission denied" } });
+    const tp: TpClient = { pricesLatest: vi.fn().mockResolvedValue([]) };
+
+    await expect(runPollL2(db, tp, "555")).rejects.toThrow("deals sweep failed");
   });
 });
