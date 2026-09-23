@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
+import { todayIso } from "@/lib/format";
 import type { TpClient } from "@/lib/tp/client";
 import { runPollL3, TRANSIT_HUBS } from "./l3";
 
@@ -17,15 +18,19 @@ type Candidate = {
 function makeFakeDb(candidates: Candidate[]) {
   const dealsUpsert = vi.fn().mockResolvedValue({ error: null });
   const anomaliesUpsert = vi.fn().mockResolvedValue({ error: null });
+  const lt = vi.fn().mockResolvedValue({ error: null });
+  const eq = vi.fn(() => ({ lt }));
+  const update = vi.fn(() => ({ eq }));
   const rpc = vi.fn((fn: string) => {
     if (fn === "anomaly_candidates") return Promise.resolve({ data: candidates, error: null });
     return Promise.resolve({ data: null, error: null }); // record_snapshots
   });
   const from = vi.fn((table: string) => ({
     upsert: table === "anomalies" ? anomaliesUpsert : dealsUpsert,
+    update,
   }));
   const db = { rpc, from } as unknown as SupabaseClient;
-  return { db, rpc, dealsUpsert, anomaliesUpsert, from };
+  return { db, rpc, dealsUpsert, anomaliesUpsert, update, eq, lt, from };
 }
 
 describe("runPollL3", () => {
@@ -115,5 +120,25 @@ describe("runPollL3", () => {
 
     expect(result.anomalies_detected).toBe(0);
     expect(anomaliesUpsert).not.toHaveBeenCalled();
+  });
+
+  it("retires anomalies whose departure already happened", async () => {
+    const { db, update, eq, lt } = makeFakeDb([]);
+    const tp: TpClient = { pricesLatest: vi.fn().mockResolvedValue([]) };
+
+    await runPollL3(db, tp, "555", 0);
+
+    expect(update).toHaveBeenCalledWith({ is_active: false });
+    expect(eq).toHaveBeenCalledWith("is_active", true);
+    // Same cutoff the page applies, so exactly the invisible rows get retired.
+    expect(lt).toHaveBeenCalledWith("depart_date", todayIso());
+  });
+
+  it("fails loudly when the sweep is rejected", async () => {
+    const { db, lt } = makeFakeDb([]);
+    lt.mockResolvedValue({ error: { message: "permission denied" } });
+    const tp: TpClient = { pricesLatest: vi.fn().mockResolvedValue([]) };
+
+    await expect(runPollL3(db, tp, "555", 0)).rejects.toThrow("anomalies sweep failed");
   });
 });

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { HOME_HUB_CODES, TRANSIT_HUB_CODES } from "@/data/hubs";
 import { buildAviasalesLink } from "@/lib/affiliate";
 import { evaluateAnomaly } from "@/lib/anomaly";
+import { todayIso } from "@/lib/format";
 import type { TpClient } from "@/lib/tp/client";
 import {
   anomalyId,
@@ -106,6 +107,20 @@ export async function runPollL3(
       .upsert(anomalies, { onConflict: "origin_iata,destination_iata,depart_date" });
     if (upsertError) throw new Error(`anomalies upsert failed: ${JSON.stringify(upsertError)}`);
   }
+
+  // Retire anomalies whose departure already happened: the upsert above only ever
+  // writes is_active = true, so without this sweep they pile up forever. Mirrors the
+  // staleness sweep L2 runs for deals. The is_active filter keeps the update off rows
+  // that are already retired, otherwise every run would rewrite the whole history and
+  // bloat the table with dead tuples. todayIso() is left on its default timezone so the
+  // cutoff matches the one /anomalies applies via anomalyWindow(): exactly the rows the
+  // page can no longer show get retired, no more and no less.
+  const { error: sweepError } = await supabase
+    .from("anomalies")
+    .update({ is_active: false })
+    .eq("is_active", true)
+    .lt("depart_date", todayIso());
+  if (sweepError) throw new Error(`anomalies sweep failed: ${JSON.stringify(sweepError)}`);
 
   return {
     api_calls: 1,

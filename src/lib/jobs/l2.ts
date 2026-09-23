@@ -67,9 +67,16 @@ export async function runPollL2(
     if (error) throw new Error(`deals upsert failed: ${JSON.stringify(error)}`);
   }
 
-  // Deactivate deals not refreshed in the last 48h.
+  // Deactivate deals not refreshed in the last 48h. The is_active filter keeps the
+  // update off rows that are already retired: without it every run rewrites the whole
+  // history and bloats the table with dead tuples.
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-  await supabase.from("deals").update({ is_active: false }).lt("last_seen_at", cutoff);
+  const { error: sweepError } = await supabase
+    .from("deals")
+    .update({ is_active: false })
+    .eq("is_active", true)
+    .lt("last_seen_at", cutoff);
+  if (sweepError) throw new Error(`deals sweep failed: ${JSON.stringify(sweepError)}`);
 
   return { api_calls: apiCalls, rows_inserted: deals.length };
 }

@@ -20,10 +20,11 @@ function makeFakeDb() {
   const rpc = vi.fn().mockResolvedValue({ error: null });
   const upsert = vi.fn().mockResolvedValue({ error: null });
   const lt = vi.fn().mockResolvedValue({ error: null });
-  const update = vi.fn(() => ({ lt }));
+  const eq = vi.fn(() => ({ lt }));
+  const update = vi.fn(() => ({ eq }));
   const from = vi.fn(() => ({ upsert, update }));
   const db = { rpc, from } as unknown as SupabaseClient;
-  return { db, rpc, upsert, update, lt, from };
+  return { db, rpc, upsert, update, eq, lt, from };
 }
 
 describe("runPollL2", () => {
@@ -48,13 +49,22 @@ describe("runPollL2", () => {
     expect(result.rows_inserted).toBeGreaterThan(0);
   });
 
-  it("deactivates stale deals via update().lt(last_seen_at)", async () => {
-    const { db, update, lt } = makeFakeDb();
+  it("deactivates stale deals via update().eq(is_active).lt(last_seen_at)", async () => {
+    const { db, update, eq, lt } = makeFakeDb();
     const tp: TpClient = { pricesLatest: vi.fn().mockResolvedValue([]) };
 
     await runPollL2(db, tp, "555");
 
     expect(update).toHaveBeenCalledWith({ is_active: false });
+    expect(eq).toHaveBeenCalledWith("is_active", true);
     expect(lt).toHaveBeenCalledWith("last_seen_at", expect.any(String));
+  });
+
+  it("fails loudly when the sweep is rejected", async () => {
+    const { db, lt } = makeFakeDb();
+    lt.mockResolvedValue({ error: { message: "permission denied" } });
+    const tp: TpClient = { pricesLatest: vi.fn().mockResolvedValue([]) };
+
+    await expect(runPollL2(db, tp, "555")).rejects.toThrow("deals sweep failed");
   });
 });
