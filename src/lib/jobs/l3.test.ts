@@ -17,15 +17,18 @@ type Candidate = {
 function makeFakeDb(candidates: Candidate[]) {
   const dealsUpsert = vi.fn().mockResolvedValue({ error: null });
   const anomaliesUpsert = vi.fn().mockResolvedValue({ error: null });
+  const lt = vi.fn().mockResolvedValue({ error: null });
+  const update = vi.fn(() => ({ lt }));
   const rpc = vi.fn((fn: string) => {
     if (fn === "anomaly_candidates") return Promise.resolve({ data: candidates, error: null });
     return Promise.resolve({ data: null, error: null }); // record_snapshots
   });
   const from = vi.fn((table: string) => ({
     upsert: table === "anomalies" ? anomaliesUpsert : dealsUpsert,
+    update,
   }));
   const db = { rpc, from } as unknown as SupabaseClient;
-  return { db, rpc, dealsUpsert, anomaliesUpsert, from };
+  return { db, rpc, dealsUpsert, anomaliesUpsert, update, lt, from };
 }
 
 describe("runPollL3", () => {
@@ -115,5 +118,15 @@ describe("runPollL3", () => {
 
     expect(result.anomalies_detected).toBe(0);
     expect(anomaliesUpsert).not.toHaveBeenCalled();
+  });
+
+  it("retires anomalies whose departure already happened", async () => {
+    const { db, update, lt } = makeFakeDb([]);
+    const tp: TpClient = { pricesLatest: vi.fn().mockResolvedValue([]) };
+
+    await runPollL3(db, tp, "555", 0);
+
+    expect(update).toHaveBeenCalledWith({ is_active: false });
+    expect(lt).toHaveBeenCalledWith("depart_date", expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
   });
 });

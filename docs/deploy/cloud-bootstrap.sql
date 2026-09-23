@@ -127,6 +127,9 @@ create unique index anomalies_route_uniq
   on public.anomalies (origin_iata, destination_iata, depart_date);
 create index anomalies_detected_idx
   on public.anomalies (detected_at desc, discount_pct desc);
+create index anomalies_active_depart_idx
+  on public.anomalies (depart_date, discount_pct desc)
+  where is_active;
 
 -- в”Ђв”Ђ cron_runs: observability в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 create table public.cron_runs (
