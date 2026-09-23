@@ -6,7 +6,7 @@ import { triggerPoll } from "./actions";
 
 const POLL_BUTTONS = [
   { job: "poll_l2", label: "Обновить ленту · L2" },
-  { job: "poll_l3", label: "Транзит + аномалии · L3" },
+  { job: "poll_l3", label: "Транзит + шок-цены · L3" },
   { job: "poll_l1", label: "Сохранённые поиски · L1" },
 ];
 
@@ -56,7 +56,7 @@ export default async function AdminPage() {
 
   const stats = [
     { label: "Активных рейсов", value: dealsRes.count ?? 0 },
-    { label: "Активных аномалий", value: anomRes.count ?? 0 },
+    { label: "Активных шок-цен", value: anomRes.count ?? 0 },
     { label: "API за 24ч", value: `${apiCallsLast24h} / ${API_BUDGET}` },
   ];
 
